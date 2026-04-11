@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data File Converter</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a1a;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 3rem 1rem;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 1.75rem;
+            color: #111;
+        }
+
+        .upload-area {
+            position: relative;
+            border: 2px dashed #d0d5dd;
+            border-radius: 10px;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s, background-color 0.15s;
+            user-select: none;
+        }
+
+        .upload-area:hover,
+        .upload-area.drag-over {
+            border-color: #4263eb;
+            background: #f5f7ff;
+        }
+
+        .upload-area.has-file {
+            border-style: solid;
+            border-color: #4263eb;
+            background: #f5f7ff;
+        }
+
+        #fileInput {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 0.75rem;
+            color: #aaa;
+        }
+
+        .upload-area.has-file .upload-icon {
+            color: #4263eb;
+        }
+
+        .upload-text {
+            font-size: 0.95rem;
+            color: #555;
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        .upload-area.has-file .upload-text {
+            color: #4263eb;
+        }
+
+        .upload-hint {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 0.35rem;
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            color: #555;
+        }
+
+        .error {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: #fff5f5;
+            border: 1.5px solid #fc8181;
+            border-radius: 8px;
+            color: #c53030;
+            font-size: 0.875rem;
+        }
+
+        .options {
+            display: none;
+            margin-top: 1.5rem;
+        }
+
+        .option-group + .option-group {
+            margin-top: 1.25rem;
+        }
+
+        .option-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #888;
+            margin-bottom: 0.5rem;
+        }
+
+        .format-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .format-btn {
+            flex: 1;
+            padding: 0.5rem 0.25rem;
+            border: 2px solid #e0e4ea;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #555;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+
+        .format-btn:hover:not(.selected) {
+            border-color: #a5b4fc;
+            color: #4263eb;
+        }
+
+        .format-btn.selected {
+            border-color: #4263eb;
+            background: #4263eb;
+            color: white;
+        }
+
+        #convertBtn {
+            display: none;
+            width: 100%;
+            margin-top: 1.75rem;
+            padding: 0.75rem;
+            background: #4263eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-family: inherit;
+        }
+
+        #convertBtn:hover {
+            background: #3451c7;
+        }
+
+        #convertBtn:active {
+            background: #2b42a8;
+        }
+
+        /* Spinner row */
+        .spinner-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .spinner-label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #888;
+        }
+
+        .spinner-label input[type="number"] {
+            width: 6rem;
+            padding: 0.45rem 0.5rem;
+            border: 2px solid #e0e4ea;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            color: #333;
+        }
+
+        .spinner-label input[type="number"]:focus {
+            outline: none;
+            border-color: #4263eb;
+        }
+
+        /* Preview */
+        #previewSection {
+            display: none;
+            margin-top: 1.5rem;
+        }
+
+        #previewSection > .option-label {
+            margin-bottom: 0.5rem;
+        }
+
+        .preview-scroll {
+            max-height: 300px;
+            overflow: auto;
+            border: 1.5px solid #e0e4ea;
+            border-radius: 8px;
+        }
+
+        .preview-table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+        }
+
+        .preview-table th,
+        .preview-table td {
+            padding: 0.3rem 0.65rem;
+            border-bottom: 1px solid #e8eaed;
+            border-right: 1px solid #e8eaed;
+            text-align: left;
+            white-space: nowrap;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .preview-table th:last-child,
+        .preview-table td:last-child {
+            border-right: none;
+        }
+
+        .preview-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .preview-table thead th {
+            background: #f0f2f5;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            border-bottom-color: #d0d5dd;
+        }
+
+        .preview-overflow {
+            display: none;
+            margin-top: 0.4rem;
+            font-size: 0.75rem;
+            color: #999;
+            text-align: right;
+        }
+
+        /* Output section */
+        #outputOptions {
+            display: none;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Data File Converter</h1>
+
+        <div class="upload-area" id="uploadArea">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <div class="upload-text">Drop a file here or click to browse</div>
+            <div class="upload-hint">CSV &nbsp;·&nbsp; TSV &nbsp;·&nbsp; SSV &nbsp;·&nbsp; TXT &nbsp;·&nbsp; DAT</div>
+            <input type="file" id="fileInput" accept=".csv,.tsv,.ssv,.tab,.txt,.dat">
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="file-info" id="fileInfo"></div>
+
+        <div class="options" id="inputOptions">
+            <div class="option-group">
+                <div class="option-label">Input Format</div>
+                <div class="format-buttons" id="inputButtons"></div>
+            </div>
+            <div class="option-group">
+                <div class="spinner-row">
+                    <label class="spinner-label">
+                        Comment Lines
+                        <input type="number" id="commentLines" min="0" value="0">
+                    </label>
+                    <label class="spinner-label">
+                        Header Lines
+                        <input type="number" id="headerLines" min="0" value="1">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="previewSection">
+            <div class="option-label">Preview</div>
+            <div class="preview-scroll">
+                <table class="preview-table" id="previewTable"></table>
+            </div>
+            <div class="preview-overflow" id="previewOverflow"></div>
+        </div>
+
+        <div id="outputOptions">
+            <div class="option-group">
+                <div class="option-label">Output Format</div>
+                <div class="format-buttons" id="outputButtons"></div>
+            </div>
+        </div>
+
+        <button id="convertBtn">Convert &amp; Download</button>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

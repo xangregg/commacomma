@@ -1,0 +1,11 @@
+{
+  "name": "comma",
+  "version": "1.0.0",
+  "description": "Browser-based delimiter file converter",
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes serve .",
+    "test": "node --test"
+  },
+  "private": true
+}
