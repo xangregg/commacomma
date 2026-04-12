@@ -3,6 +3,9 @@
 A browser-based tool for converting tabular data files.
 Drop or open a file, choose an output format, and download the result.
 
+Live on GitHub Pages at [xangregg.github.io/commacomma](https://xangregg.github.io/commacomma/).
+
+![Initial app view with just an upload area](images/commacomma1.png)
 **Supported input formats:** CSV, TSV, SSV, TXT, DAT, RDS, RData/RDA
 
 **Supported output formats:** CSV, TSV, SSV
@@ -13,6 +16,8 @@ Data frames and matrices are extracted; one output file is produced per table.
 The app runs entirely in the browser with no server-side processing.
 Serve it locally with `npm start` (uses `npx serve`) or deploy the files
 directly to any static host such as GitHub Pages.
+
+Largely written by Claude Code, including this readme file, under close human supervision.
 
 ---
 
