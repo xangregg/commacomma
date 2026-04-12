@@ -1,0 +1,6 @@
+id;value;notes
+1;Hello, World;comma in value
+2;"foo;bar";semicolon in value
+3;"say ""hi""";quote in value
+4;"line1
+line2";newline in value

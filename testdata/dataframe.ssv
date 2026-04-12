@@ -1,0 +1,4 @@
+name;age;score;passed
+Alice;30;95.5;TRUE
+Bob;25;87.3;TRUE
+Charlie;35;92.1;FALSE

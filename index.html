@@ -28,7 +28,6 @@
             box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
             padding: 2rem;
             width: 100%;
-            max-width: 520px;
         }
 
         h1 {
@@ -36,10 +35,12 @@
             font-weight: 700;
             margin-bottom: 1.75rem;
             color: #111;
+            text-align: center;
         }
 
         .upload-area {
-            position: relative;
+            max-width: 460px;
+            margin: 0 auto;
             border: 2px dashed #d0d5dd;
             border-radius: 10px;
             padding: 2.5rem 1.5rem;
@@ -62,10 +63,7 @@
         }
 
         #fileInput {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
+            display: none;
         }
 
         .upload-icon {
@@ -206,8 +204,8 @@
             color: #888;
         }
 
-        .spinner-label input[type="number"] {
-            width: 6rem;
+        .spinner-label input[type="number"],
+        .spinner-label input[type="text"] {
             padding: 0.45rem 0.5rem;
             border: 2px solid #e0e4ea;
             border-radius: 8px;
@@ -216,9 +214,18 @@
             color: #333;
         }
 
-        .spinner-label input[type="number"]:focus {
+        .spinner-label input[type="number"] { width: 6rem; }
+        .spinner-label input[type="text"]   { width: 8rem; }
+
+        .spinner-label input:focus {
             outline: none;
             border-color: #4263eb;
+        }
+
+        .spinner-label input:disabled {
+            background: #f5f5f5;
+            color: #bbb;
+            cursor: not-allowed;
         }
 
         /* Preview */
@@ -289,6 +296,47 @@
             display: none;
             margin-top: 1.5rem;
         }
+
+        /* R tables list */
+        #rTablesSection {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        #rTablesSection > .option-label {
+            margin-bottom: 0.4rem;
+        }
+
+        .r-table-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.45rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: #333;
+            transition: background 0.12s;
+        }
+
+        .r-table-item:hover {
+            background: #f0f2f5;
+        }
+
+        .r-table-item.selected {
+            background: #ebefff;
+            color: #4263eb;
+        }
+
+        .r-table-dims {
+            font-size: 0.75rem;
+            color: #999;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .r-table-item.selected .r-table-dims {
+            color: #7c8cf8;
+        }
     </style>
 </head>
 <body>
@@ -303,13 +351,19 @@
                 <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
             <div class="upload-text">Drop a file here or click to browse</div>
-            <div class="upload-hint">CSV &nbsp;·&nbsp; TSV &nbsp;·&nbsp; SSV &nbsp;·&nbsp; TXT &nbsp;·&nbsp; DAT</div>
-            <input type="file" id="fileInput" accept=".csv,.tsv,.ssv,.tab,.txt,.dat">
+            <div class="upload-hint">CSV &nbsp;·&nbsp; TSV &nbsp;·&nbsp; SSV &nbsp;·&nbsp; TXT &nbsp;·&nbsp; DAT &nbsp;·&nbsp; RDS &nbsp;·&nbsp; RData</div>
         </div>
+
+        <input type="file" id="fileInput" accept=".csv,.tsv,.ssv,.tab,.txt,.dat,.rds,.rdata,.rda">
 
         <div class="error" id="error"></div>
 
         <div class="file-info" id="fileInfo"></div>
+
+        <div id="rTablesSection">
+            <div class="option-label">Tables</div>
+            <div id="rTablesList"></div>
+        </div>
 
         <div class="options" id="inputOptions">
             <div class="option-group">
@@ -325,6 +379,10 @@
                     <label class="spinner-label">
                         Header Lines
                         <input type="number" id="headerLines" min="0" value="1">
+                    </label>
+                    <label class="spinner-label">
+                        Combine With
+                        <input type="text" id="combineStr" value=" " disabled>
                     </label>
                 </div>
             </div>

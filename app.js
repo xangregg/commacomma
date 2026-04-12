@@ -1,13 +1,16 @@
 import { FORMATS, detectFormatFromExt, sniffFormat } from './formats.js';
 import { parseDelimited, serializeDelimited } from './parser.js';
+import { parseRFile } from './rds.js';
 
-const MAX_PREVIEW_ROWS = 50;
-const MAX_PREVIEW_COLS = 10;
+const MAX_PREVIEW_ROWS = 100;
+const MAX_PREVIEW_COLS = 100;
 
 let parsedRows    = null;
 let currentFile   = null;
 let inputFormatId  = 'csv';
 let outputFormatId = 'tsv';
+let rTables       = null; // [{name, rows}] extracted from an R file
+let rTableIndex   = 0;
 
 function getFormat(id) {
     return FORMATS.find(f => f.id === id);
@@ -49,12 +52,25 @@ function getSpinValue(id) {
     return Math.max(0, parseInt(document.getElementById(id).value, 10) || 0);
 }
 
+function collapseHeaders(rows, headerLines, combineStr) {
+    if (headerLines <= 1)
+        return rows;
+    const headerRows = rows.slice(0, headerLines);
+    const dataRows   = rows.slice(headerLines);
+    const maxCols    = headerRows.reduce((max, r) => Math.max(max, r.length), 0);
+    const collapsed  = Array.from({ length: maxCols }, (_, c) =>
+        headerRows.map(r => r[c] ?? '').filter(s => s !== '').join(combineStr)
+    );
+    return [collapsed, ...dataRows];
+}
+
 function reparse() {
     if (!currentFile)
         return;
 
     const commentLines = getSpinValue('commentLines');
     const headerLines  = getSpinValue('headerLines');
+    const combineStr   = document.getElementById('combineStr').value;
 
     let text = currentFile.text;
     if (commentLines > 0) {
@@ -62,11 +78,13 @@ function reparse() {
         text = lines.slice(commentLines).join('\n');
     }
 
+    document.getElementById('combineStr').disabled = headerLines <= 1;
+
     try {
         parsedRows = parseDelimited(text, getFormat(inputFormatId).delimiter);
         showError('');
         updateFileInfo();
-        renderPreview(parsedRows, headerLines);
+        renderPreview(collapseHeaders(parsedRows, headerLines, combineStr), Math.min(headerLines, 1));
     } catch (e) {
         showError('Failed to parse file: ' + e.message);
         parsedRows = null;
@@ -147,6 +165,11 @@ function renderPreview(rows, headerLines) {
     setOutputVisible(true);
 }
 
+function isRExtension(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    return ext === 'rds' || ext === 'rdata' || ext === 'rda';
+}
+
 async function loadFile(file) {
     showError('');
 
@@ -155,36 +178,132 @@ async function loadFile(file) {
     area.querySelector('.upload-hint').textContent = 'Click or drop to change file';
     area.classList.add('has-file');
 
+    // Reset all state
+    parsedRows = null;
+    currentFile = null;
+    rTables = null;
+    rTableIndex = 0;
+
+    setOutputVisible(false);
+    document.getElementById('inputOptions').style.display   = 'none';
+    document.getElementById('fileInfo').style.display       = 'none';
+    document.getElementById('rTablesSection').style.display = 'none';
+
     try {
-        let text = await file.text();
-        if (text.charCodeAt(0) === 0xFEFF)
-            text = text.slice(1); // strip UTF-8 BOM
-
-        const detectedId = detectFormatFromExt(file.name) ?? sniffFormat(text);
-        currentFile = { name: file.name, text };
-
-        setInputFormat(detectedId);
-        setOutputFormat(FORMATS.find(f => f.id !== detectedId).id);
-
-        document.getElementById('inputOptions').style.display = 'block';
-
-        reparse();
+        if (isRExtension(file.name))
+            await loadRData(file);
+        else
+            await loadTextData(file);
     } catch (err) {
         showError('Could not read file: ' + err.message);
     }
 }
 
-function convert() {
-    if (!parsedRows)
+async function loadTextData(file) {
+    let text = await file.text();
+    if (text.charCodeAt(0) === 0xFEFF)
+        text = text.slice(1); // strip UTF-8 BOM
+
+    const lines        = text.split('\n');
+    const commentCount = lines.findIndex(line => !line.startsWith('#'));
+    document.getElementById('commentLines').value = commentCount < 0 ? 0 : commentCount;
+
+    const sniffText  = commentCount > 0 ? lines.slice(commentCount).join('\n') : text;
+    const detectedId = detectFormatFromExt(file.name) ?? sniffFormat(sniffText);
+    currentFile = { name: file.name, text };
+
+    setInputFormat(detectedId);
+    setOutputFormat(FORMATS.find(f => f.id !== detectedId).id);
+
+    document.getElementById('inputOptions').style.display = 'block';
+
+    reparse();
+}
+
+async function loadRData(file) {
+    const buffer = await file.arrayBuffer();
+    rTables = await parseRFile(buffer, file.name);
+
+    if (rTables.length === 0) {
+        showError('No data tables found in R file.');
         return;
+    }
+
+    setOutputFormat('csv');
+    buildRTablesList();
+    selectRTable(0);
+}
+
+function buildRTablesList() {
+    const section = document.getElementById('rTablesSection');
+    const list    = document.getElementById('rTablesList');
+    list.innerHTML = '';
+
+    for (let i = 0; i < rTables.length; i++) {
+        const t    = rTables[i];
+        const nrow = t.rows.length - 1;
+        const ncol = t.rows[0]?.length ?? 0;
+        const item = document.createElement('div');
+        item.className   = 'r-table-item';
+        item.dataset.idx = i;
+        item.innerHTML   =
+            `<span class="r-table-name">${t.name}</span>` +
+            `<span class="r-table-dims">${nrow} × ${ncol}</span>`;
+        item.addEventListener('click', () => selectRTable(i));
+        list.appendChild(item);
+    }
+
+    section.style.display = rTables.length > 1 ? 'block' : 'none';
+}
+
+function selectRTable(index) {
+    rTableIndex = index;
+
+    // Highlight selected item in list
+    const items = document.querySelectorAll('.r-table-item');
+    items.forEach((el, i) => el.classList.toggle('selected', i === index));
+
+    const table = rTables[index];
+    const nrow  = table.rows.length - 1;
+    const ncol  = table.rows[0]?.length ?? 0;
+    const info  = document.getElementById('fileInfo');
+    info.textContent = rTables.length > 1
+        ? `${table.name}: ${nrow} row${nrow !== 1 ? 's' : ''}, ${ncol} column${ncol !== 1 ? 's' : ''}`
+        : `${nrow} row${nrow !== 1 ? 's' : ''}, ${ncol} column${ncol !== 1 ? 's' : ''}`;
+    info.style.display = 'block';
+
+    const btn = document.getElementById('convertBtn');
+    btn.textContent = rTables.length > 1
+        ? `Convert & Download "${table.name}"`
+        : 'Convert & Download';
+
+    renderPreview(table.rows, 1);
+    setOutputVisible(true);
+}
+
+function convert() {
     const fmt = getFormat(outputFormatId);
-    const output = serializeDelimited(parsedRows, fmt.delimiter);
-    const baseName = currentFile.name.replace(/\.[^.]+$/, '');
-    const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = baseName + '.' + fmt.ext;
+    let outputRows, downloadName;
+
+    if (rTables) {
+        const table = rTables[rTableIndex];
+        outputRows   = table.rows;
+        downloadName = table.name;
+    } else {
+        if (!parsedRows)
+            return;
+        const headerLines = getSpinValue('headerLines');
+        const combineStr  = document.getElementById('combineStr').value;
+        outputRows   = collapseHeaders(parsedRows, headerLines, combineStr);
+        downloadName = currentFile.name.replace(/\.[^.]+$/, '');
+    }
+
+    const output = serializeDelimited(outputRows, fmt.delimiter);
+    const blob   = new Blob([output], { type: 'text/plain;charset=utf-8' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    a.href     = url;
+    a.download = downloadName + '.' + fmt.ext;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -194,31 +313,42 @@ function convert() {
 const uploadArea = document.getElementById('uploadArea');
 const fileInput  = document.getElementById('fileInput');
 
+// Guard against the click bubbling back up from fileInput to uploadArea.
+uploadArea.addEventListener('click', e => {
+    if (e.target !== fileInput)
+        fileInput.click();
+});
+
 fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0)
         loadFile(fileInput.files[0]);
 });
 
-fileInput.addEventListener('dragenter', e => {
+uploadArea.addEventListener('dragenter', e => {
     e.preventDefault();
     uploadArea.classList.add('drag-over');
 });
 
-fileInput.addEventListener('dragover', e => {
+uploadArea.addEventListener('dragover', e => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
     uploadArea.classList.add('drag-over');
 });
 
-fileInput.addEventListener('dragleave', e => {
+uploadArea.addEventListener('dragleave', e => {
     if (!uploadArea.contains(e.relatedTarget))
         uploadArea.classList.remove('drag-over');
 });
 
-fileInput.addEventListener('drop', () => {
+uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
     uploadArea.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file)
+        loadFile(file);
 });
 
 document.getElementById('convertBtn').addEventListener('click', convert);
 document.getElementById('commentLines').addEventListener('input', reparse);
 document.getElementById('headerLines').addEventListener('input', reparse);
+document.getElementById('combineStr').addEventListener('input', reparse);

@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "npx --yes serve .",
-    "test": "node --test"
+    "test": "node --test",
+    "vendor": "cp node_modules/@jackemcpherson/rds-js/dist/index.js vendor/rds-js.js"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@jackemcpherson/rds-js": "^0.2.0"
+  }
 }
