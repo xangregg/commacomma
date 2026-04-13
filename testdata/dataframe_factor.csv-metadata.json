@@ -1,0 +1,19 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "dataframe_factor.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "team",
+        "titles": "team",
+        "datatype": "string",
+        "dc:description": "Factor with levels: Adelaide, Brisbane, Carlton"
+      },
+      {
+        "name": "wins",
+        "titles": "wins",
+        "datatype": "integer"
+      }
+    ]
+  }
+}

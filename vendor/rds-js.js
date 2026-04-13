@@ -354,6 +354,8 @@ function readIntegerVector(reader, refs, hasAttributes, isObject) {
           const idx = raw[i];
           resolved[i] = idx === null || idx === void 0 ? null : levels[idx - 1] ?? null;
         }
+        resolved.__factorLevels = [...levels];
+        resolved.__factorOrdered = hasClass(attrs, "ordered");
         return resolved;
       }
     }
@@ -444,6 +446,7 @@ function readGenericVector(reader, refs, hasAttributes, isObject) {
 function toDataFrame(names, columns) {
   const validNames = [];
   const validColumns = [];
+  const columnMeta = [];
   const nCols = Math.min(names.length, columns.length);
   for (let c = 0; c < nCols; c++) {
     const name = names[c];
@@ -451,9 +454,12 @@ function toDataFrame(names, columns) {
     if (name !== void 0 && Array.isArray(col)) {
       validNames.push(name);
       validColumns.push(col);
+      columnMeta.push(col.__factorLevels != null
+        ? { levels: col.__factorLevels, ordered: col.__factorOrdered ?? false }
+        : null);
     }
   }
-  return { names: validNames, columns: validColumns };
+  return { names: validNames, columns: validColumns, columnMeta };
 }
 function readRawVector(reader, refs, hasAttributes) {
   const length = readLength(reader);

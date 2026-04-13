@@ -1,6 +1,7 @@
 import { FORMATS, detectFormatFromExt, sniffFormat } from './formats.js';
 import { parseDelimited, serializeDelimited } from './parser.js';
 import { parseRFile } from './rds.js';
+import { generateCsvw } from './csvw.js';
 
 const MAX_PREVIEW_ROWS = 100;
 const MAX_PREVIEW_COLS = 100;
@@ -310,39 +311,6 @@ function convert() {
     URL.revokeObjectURL(url);
 }
 
-function inferColumnType(values) {
-    const nonEmpty = values.filter(v => v !== '');
-    if (nonEmpty.length === 0)
-        return 'string';
-    if (nonEmpty.every(v => /^-?\d+$/.test(v)))
-        return 'integer';
-    if (nonEmpty.every(v => /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(v)))
-        return 'number';
-    if (nonEmpty.every(v => /^\d{4}-\d{2}-\d{2}$/.test(v)))
-        return 'date';
-    if (nonEmpty.every(v => /^(TRUE|FALSE|true|false)$/.test(v)))
-        return 'boolean';
-    return 'string';
-}
-
-function generateCsvw(rows, csvFilename) {
-    if (rows.length === 0)
-        return null;
-    const headers  = rows[0];
-    const dataRows = rows.slice(1);
-    const columns  = headers.map((title, i) => {
-        const values   = dataRows.map(r => r[i] ?? '');
-        const datatype = inferColumnType(values);
-        const name     = (title.replace(/[^A-Za-z0-9_]/g, '_') || `col${i + 1}`)
-                             .replace(/^(\d)/, '_$1');
-        return { name, titles: title, datatype };
-    });
-    return JSON.stringify({
-        '@context': 'http://www.w3.org/ns/csvw',
-        url: csvFilename,
-        tableSchema: { columns },
-    }, null, 2);
-}
 
 function downloadCsvw() {
     const fmt = getFormat(outputFormatId);
@@ -362,7 +330,8 @@ function downloadCsvw() {
     }
 
     const csvFilename = baseName + '.' + fmt.ext;
-    const content = generateCsvw(rows, csvFilename);
+    const meta    = rTables ? rTables[rTableIndex].columnMeta : null;
+    const content = generateCsvw(rows, csvFilename, meta);
     if (!content)
         return;
 

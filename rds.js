@@ -39,7 +39,7 @@ function dataFrameToTable(df, name) {
             if (v === false) return 'FALSE';
             return String(v);
         }));
-    return { name, rows };
+    return { name, rows, columnMeta: df.columnMeta ?? null };
 }
 
 function extractTables(result, filename) {

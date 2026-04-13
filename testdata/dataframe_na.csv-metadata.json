@@ -1,0 +1,23 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "dataframe_na.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "x",
+        "titles": "x",
+        "datatype": "integer"
+      },
+      {
+        "name": "y",
+        "titles": "y",
+        "datatype": "string"
+      },
+      {
+        "name": "z",
+        "titles": "z",
+        "datatype": "number"
+      }
+    ]
+  }
+}

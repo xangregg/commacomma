@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseRFile } from './rds.js';
 import { serializeDelimited } from './parser.js';
+import { generateCsvw } from './csvw.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
@@ -30,5 +31,13 @@ for (const dataset of DATASETS) {
                 assert.equal(actual, readText(dataset, dst));
             });
         }
+
+        test('rds → csvw', async () => {
+            const tables  = await parseRFile(readBinary(dataset, 'rds'), `${dataset}.rds`);
+            assert.equal(tables.length, 1);
+            const actual   = generateCsvw(tables[0].rows, `${dataset}.csv`, tables[0].columnMeta);
+            const expected = readText(dataset, 'csv-metadata.json');
+            assert.equal(actual, expected);
+        });
     });
 }

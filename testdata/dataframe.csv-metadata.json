@@ -1,0 +1,28 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "dataframe.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "name",
+        "titles": "name",
+        "datatype": "string"
+      },
+      {
+        "name": "age",
+        "titles": "age",
+        "datatype": "integer"
+      },
+      {
+        "name": "score",
+        "titles": "score",
+        "datatype": "number"
+      },
+      {
+        "name": "passed",
+        "titles": "passed",
+        "datatype": "boolean"
+      }
+    ]
+  }
+}

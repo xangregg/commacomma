@@ -1,0 +1,18 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "dataframe_dates.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "name",
+        "titles": "name",
+        "datatype": "string"
+      },
+      {
+        "name": "date",
+        "titles": "date",
+        "datatype": "date"
+      }
+    ]
+  }
+}
