@@ -1,0 +1,5 @@
+participant	age	height	active	city
+1	25	170.5	TRUE	Sydney
+2	34	182	FALSE	Melbourne
+3	28	165.3	TRUE	Brisbane
+4	41	178.8	TRUE	Perth

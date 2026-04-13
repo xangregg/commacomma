@@ -1,0 +1,38 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "dataframe_labels.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "participant",
+        "titles": "participant",
+        "datatype": "integer",
+        "dc:description": "Participant ID"
+      },
+      {
+        "name": "age",
+        "titles": "age",
+        "datatype": "integer",
+        "dc:description": "Age in years"
+      },
+      {
+        "name": "height",
+        "titles": "height",
+        "datatype": "number",
+        "dc:description": "Height in centimetres"
+      },
+      {
+        "name": "active",
+        "titles": "active",
+        "datatype": "boolean",
+        "dc:description": "Currently active participant"
+      },
+      {
+        "name": "city",
+        "titles": "city",
+        "datatype": "string",
+        "dc:description": "City of residence"
+      }
+    ]
+  }
+}

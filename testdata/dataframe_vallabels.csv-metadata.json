@@ -1,0 +1,34 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "dataframe_vallabels.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "id",
+        "titles": "id",
+        "datatype": "integer"
+      },
+      {
+        "name": "gender",
+        "titles": "gender",
+        "datatype": "integer",
+        "dc:description": "Gender of participant",
+        "valueLabels": {
+          "1": "Male",
+          "2": "Female"
+        }
+      },
+      {
+        "name": "status",
+        "titles": "status",
+        "datatype": "integer",
+        "dc:description": "Account status",
+        "valueLabels": {
+          "1": "Active",
+          "2": "Inactive",
+          "3": "Pending"
+        }
+      }
+    ]
+  }
+}

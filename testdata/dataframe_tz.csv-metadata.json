@@ -1,0 +1,20 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "dataframe_tz.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "event",
+        "titles": "event",
+        "datatype": "string"
+      },
+      {
+        "name": "scheduled",
+        "titles": "scheduled",
+        "datatype": "datetime",
+        "dc:description": "Scheduled time (Eastern)",
+        "tzone": "America/New_York"
+      }
+    ]
+  }
+}

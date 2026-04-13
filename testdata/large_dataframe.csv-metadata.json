@@ -1,0 +1,47 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "large_dataframe.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "id",
+        "titles": "id",
+        "datatype": "integer"
+      },
+      {
+        "name": "name",
+        "titles": "name",
+        "datatype": "string"
+      },
+      {
+        "name": "value",
+        "titles": "value",
+        "datatype": "number"
+      },
+      {
+        "name": "category",
+        "titles": "category",
+        "datatype": {
+          "base": "string",
+          "format": "^(A|B|C)$"
+        },
+        "enum": [
+          "A",
+          "B",
+          "C"
+        ],
+        "dc:description": "Factor with levels: A, B, C"
+      },
+      {
+        "name": "active",
+        "titles": "active",
+        "datatype": "boolean"
+      },
+      {
+        "name": "date",
+        "titles": "date",
+        "datatype": "date"
+      }
+    ]
+  }
+}

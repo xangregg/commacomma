@@ -18,7 +18,11 @@ function readBinary(dataset, ext) {
 }
 
 const DELIMITERS = { csv: ',', tsv: '\t', ssv: ';' };
-const DATASETS   = ['dataframe', 'dataframe_dates', 'dataframe_factor', 'dataframe_na'];
+const DATASETS   = [
+    'dataframe', 'dataframe_dates', 'dataframe_factor', 'dataframe_na',
+    'dataframe_labels', 'dataframe_vallabels', 'dataframe_tz',
+    'large_dataframe', 'empty_dataframe',
+];
 const DST_FMTS   = ['csv', 'tsv', 'ssv'];
 
 for (const dataset of DATASETS) {
