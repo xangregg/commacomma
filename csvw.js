@@ -23,10 +23,13 @@ export function generateCsvw(rows, csvFilename, columnMeta = null) {
         const datatype = inferColumnType(values);
         const name     = (title.replace(/[^A-Za-z0-9_]/g, '_') || `col${i + 1}`)
                              .replace(/^(\d)/, '_$1');
-        const col      = { name, titles: title, datatype };
-        const meta     = columnMeta?.[i];
+        const col  = { name, titles: title, datatype };
+        const meta = columnMeta?.[i];
         if (meta?.levels?.length > 0) {
-            const prefix = meta.ordered ? 'Ordered factor' : 'Factor';
+            const escaped  = meta.levels.map(l => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+            const prefix   = meta.ordered ? 'Ordered factor' : 'Factor';
+            col.datatype         = { base: 'string', format: `^(${escaped.join('|')})$` };
+            col.enum             = meta.levels;
             col['dc:description'] = `${prefix} with levels: ${meta.levels.join(', ')}`;
         }
         return col;

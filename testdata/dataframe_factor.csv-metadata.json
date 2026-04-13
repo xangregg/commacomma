@@ -6,7 +6,15 @@
       {
         "name": "team",
         "titles": "team",
-        "datatype": "string",
+        "datatype": {
+          "base": "string",
+          "format": "^(Adelaide|Brisbane|Carlton)$"
+        },
+        "enum": [
+          "Adelaide",
+          "Brisbane",
+          "Carlton"
+        ],
         "dc:description": "Factor with levels: Adelaide, Brisbane, Carlton"
       },
       {
