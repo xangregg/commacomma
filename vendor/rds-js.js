@@ -333,7 +333,8 @@ function readLogicalVector(reader, refs, hasAttributes) {
     result[i] = val === NA.INTEGER ? null : val !== 0;
   }
   if (hasAttributes) {
-    readAttributes(reader, refs);
+    const attrs = readAttributes(reader, refs);
+    if (attrs.label != null) result.__label = String(attrs.label);
   }
   return result;
 }
@@ -344,23 +345,28 @@ function readIntegerVector(reader, refs, hasAttributes, isObject) {
     const val = reader.readInt();
     raw[i] = val === NA.INTEGER ? null : val;
   }
-  if (hasAttributes) {
-    const attrs = readAttributes(reader, refs);
-    if (isObject && isFactor(attrs)) {
-      const levels = attrs.levels;
-      if (levels) {
-        const resolved = new Array(length);
-        for (let i = 0; i < length; i++) {
-          const idx = raw[i];
-          resolved[i] = idx === null || idx === void 0 ? null : levels[idx - 1] ?? null;
-        }
-        resolved.__factorLevels = [...levels];
-        resolved.__factorOrdered = hasClass(attrs, "ordered");
-        return resolved;
+  if (!hasAttributes) return raw;
+  const attrs = readAttributes(reader, refs);
+  let result = raw;
+  if (isObject && isFactor(attrs)) {
+    const levels = attrs.levels;
+    if (levels) {
+      result = new Array(length);
+      for (let i = 0; i < length; i++) {
+        const idx = raw[i];
+        result[i] = idx === null || idx === void 0 ? null : levels[idx - 1] ?? null;
       }
+      result.__factorLevels = [...levels];
+      result.__factorOrdered = hasClass(attrs, "ordered");
     }
   }
-  return raw;
+  if (attrs.label != null) result.__label = String(attrs.label);
+  if (attrs.names != null) result.__names = attrs.names;
+  if (Array.isArray(attrs.labels) && attrs.labels.__names != null)
+    result.__valueLabels = Object.fromEntries(
+      attrs.labels.__names.map((label, i) => [String(attrs.labels[i]), label])
+    );
+  return result;
 }
 function isFactor(attrs) {
   return hasClass(attrs, "factor") || hasClass(attrs, "ordered");
@@ -380,16 +386,26 @@ function readRealVector(reader, refs, hasAttributes, isObject) {
     const val = reader.readDouble();
     raw[i] = isNaReal(val) ? null : val;
   }
-  if (hasAttributes) {
-    const attrs = readAttributes(reader, refs);
-    if (isObject && hasClass(attrs, "Date")) {
-      return raw.map((v) => v === null ? null : epochDaysToIsoDate(v));
-    }
-    if (isObject && hasClass(attrs, "POSIXct")) {
-      return raw.map((v) => v === null ? null : epochSecondsToIsoDatetime(v));
-    }
+  if (!hasAttributes) return raw;
+  const attrs = readAttributes(reader, refs);
+  let result;
+  if (isObject && hasClass(attrs, "Date"))
+    result = raw.map((v) => v === null ? null : epochDaysToIsoDate(v));
+  else if (isObject && hasClass(attrs, "POSIXct"))
+    result = raw.map((v) => v === null ? null : epochSecondsToIsoDatetime(v));
+  else
+    result = raw;
+  if (attrs.label != null) result.__label = String(attrs.label);
+  if (attrs.names != null) result.__names = attrs.names;
+  if (attrs.tzone != null) {
+    const tz = Array.isArray(attrs.tzone) ? attrs.tzone[0] : String(attrs.tzone);
+    if (tz) result.__tzone = tz;
   }
-  return raw;
+  if (Array.isArray(attrs.labels) && attrs.labels.__names != null)
+    result.__valueLabels = Object.fromEntries(
+      attrs.labels.__names.map((label, i) => [String(attrs.labels[i]), label])
+    );
+  return result;
 }
 function hasClass(attrs, className) {
   return attrs.class?.includes(className) ?? false;
@@ -415,7 +431,9 @@ function readStringVector(reader, refs, hasAttributes) {
     result[i] = readCharsxp(reader, gpFlags);
   }
   if (hasAttributes) {
-    readAttributes(reader, refs);
+    const attrs = readAttributes(reader, refs);
+    if (attrs.label != null) result.__label = String(attrs.label);
+    if (attrs.names != null) result.__names = attrs.names;
   }
   return result;
 }
@@ -454,9 +472,15 @@ function toDataFrame(names, columns) {
     if (name !== void 0 && Array.isArray(col)) {
       validNames.push(name);
       validColumns.push(col);
-      columnMeta.push(col.__factorLevels != null
-        ? { levels: col.__factorLevels, ordered: col.__factorOrdered ?? false }
-        : null);
+      const meta = {};
+      if (col.__factorLevels != null) {
+        meta.levels  = col.__factorLevels;
+        meta.ordered = col.__factorOrdered ?? false;
+      }
+      if (col.__label       != null) meta.label       = col.__label;
+      if (col.__tzone       != null) meta.tzone       = col.__tzone;
+      if (col.__valueLabels != null) meta.valueLabels = col.__valueLabels;
+      columnMeta.push(Object.keys(meta).length > 0 ? meta : null);
     }
   }
   return { names: validNames, columns: validColumns, columnMeta };

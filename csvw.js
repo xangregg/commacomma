@@ -6,6 +6,8 @@ function inferColumnType(values) {
         return 'integer';
     if (nonEmpty.every(v => /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(v)))
         return 'number';
+    if (nonEmpty.every(v => /^\d{4}-\d{2}-\d{2}T/.test(v)))
+        return 'datetime';
     if (nonEmpty.every(v => /^\d{4}-\d{2}-\d{2}$/.test(v)))
         return 'date';
     if (nonEmpty.every(v => /^(TRUE|FALSE|true|false)$/.test(v)))
@@ -26,12 +28,18 @@ export function generateCsvw(rows, csvFilename, columnMeta = null) {
         const col  = { name, titles: title, datatype };
         const meta = columnMeta?.[i];
         if (meta?.levels?.length > 0) {
-            const escaped  = meta.levels.map(l => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-            const prefix   = meta.ordered ? 'Ordered factor' : 'Factor';
-            col.datatype         = { base: 'string', format: `^(${escaped.join('|')})$` };
-            col.enum             = meta.levels;
+            const escaped = meta.levels.map(l => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+            col.datatype = { base: 'string', format: `^(${escaped.join('|')})$` };
+            col.enum     = meta.levels;
+        }
+        if (meta?.label) {
+            col['dc:description'] = meta.label;
+        } else if (meta?.levels?.length > 0) {
+            const prefix = meta.ordered ? 'Ordered factor' : 'Factor';
             col['dc:description'] = `${prefix} with levels: ${meta.levels.join(', ')}`;
         }
+        if (meta?.tzone)       col.tzone       = meta.tzone;
+        if (meta?.valueLabels) col.valueLabels = meta.valueLabels;
         return col;
     });
     return JSON.stringify({
