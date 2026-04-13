@@ -176,29 +176,56 @@
             color: white;
         }
 
-        #convertBtn {
+        .action-row {
             display: none;
-            width: 100%;
+            flex-direction: row;
+            gap: 0.5rem;
             margin-top: 1.75rem;
+        }
+
+        .action-row button {
+            flex: 1;
             padding: 0.75rem;
-            background: #4263eb;
-            color: white;
-            border: none;
             border-radius: 8px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.15s;
+            transition: background 0.15s, border-color 0.15s;
             font-family: inherit;
         }
 
-        #convertBtn:hover {
-            background: #3451c7;
+        #convertBtn {
+            background: #4263eb;
+            color: white;
+            border: none;
         }
 
-        #convertBtn:active {
-            background: #2b42a8;
+        #convertBtn:hover  { background: #3451c7; }
+        #convertBtn:active { background: #2b42a8; }
+
+        #csvwBtn {
+            background: white;
+            color: #4263eb;
+            border: 2px solid #4263eb;
         }
+
+        #csvwBtn:hover  { background: #f5f7ff; }
+        #csvwBtn:active { background: #ebefff; }
+
+        .csvw-note {
+            display: none;
+            margin-top: 0.45rem;
+            font-size: 0.75rem;
+            color: #999;
+            text-align: center;
+        }
+
+        .csvw-note a {
+            color: #4263eb;
+            text-decoration: none;
+        }
+
+        .csvw-note a:hover { text-decoration: underline; }
 
         /* Spinner row */
         .spinner-row {
@@ -417,7 +444,14 @@
             </div>
         </div>
 
-        <button id="convertBtn">Convert &amp; Download</button>
+        <div class="action-row" id="actionRow">
+            <button id="convertBtn">Download Data</button>
+            <button id="csvwBtn">Download Metadata</button>
+        </div>
+        <p class="csvw-note" id="csvwNote">
+            Metadata uses the <a href="https://csvw.org" target="_blank" rel="noopener">CSVW standard</a>.
+            Column types may be inferred from values.
+        </p>
     </div>
 
     <script type="module" src="app.js"></script>

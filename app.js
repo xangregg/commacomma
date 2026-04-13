@@ -93,10 +93,12 @@ function reparse() {
 }
 
 function setOutputVisible(visible) {
-    const display = visible ? 'block' : 'none';
-    document.getElementById('previewSection').style.display = display;
-    document.getElementById('outputOptions').style.display  = display;
-    document.getElementById('convertBtn').style.display     = display;
+    const block = visible ? 'block' : 'none';
+    const flex  = visible ? 'flex'  : 'none';
+    document.getElementById('previewSection').style.display = block;
+    document.getElementById('outputOptions').style.display  = block;
+    document.getElementById('actionRow').style.display      = flex;
+    document.getElementById('csvwNote').style.display       = block;
 }
 
 function updateFileInfo() {
@@ -274,8 +276,8 @@ function selectRTable(index) {
 
     const btn = document.getElementById('convertBtn');
     btn.textContent = rTables.length > 1
-        ? `Convert & Download "${table.name}"`
-        : 'Convert & Download';
+        ? `Download "${table.name}"`
+        : 'Download Data';
 
     renderPreview(table.rows, 1);
     setOutputVisible(true);
@@ -304,6 +306,71 @@ function convert() {
     const a      = document.createElement('a');
     a.href     = url;
     a.download = downloadName + '.' + fmt.ext;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function inferColumnType(values) {
+    const nonEmpty = values.filter(v => v !== '');
+    if (nonEmpty.length === 0)
+        return 'string';
+    if (nonEmpty.every(v => /^-?\d+$/.test(v)))
+        return 'integer';
+    if (nonEmpty.every(v => /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(v)))
+        return 'number';
+    if (nonEmpty.every(v => /^\d{4}-\d{2}-\d{2}$/.test(v)))
+        return 'date';
+    if (nonEmpty.every(v => /^(TRUE|FALSE|true|false)$/.test(v)))
+        return 'boolean';
+    return 'string';
+}
+
+function generateCsvw(rows, csvFilename) {
+    if (rows.length === 0)
+        return null;
+    const headers  = rows[0];
+    const dataRows = rows.slice(1);
+    const columns  = headers.map((title, i) => {
+        const values   = dataRows.map(r => r[i] ?? '');
+        const datatype = inferColumnType(values);
+        const name     = (title.replace(/[^A-Za-z0-9_]/g, '_') || `col${i + 1}`)
+                             .replace(/^(\d)/, '_$1');
+        return { name, titles: title, datatype };
+    });
+    return JSON.stringify({
+        '@context': 'http://www.w3.org/ns/csvw',
+        url: csvFilename,
+        tableSchema: { columns },
+    }, null, 2);
+}
+
+function downloadCsvw() {
+    const fmt = getFormat(outputFormatId);
+    let rows, baseName;
+
+    if (rTables) {
+        const table = rTables[rTableIndex];
+        rows     = table.rows;
+        baseName = table.name;
+    } else {
+        if (!parsedRows)
+            return;
+        const headerLines = getSpinValue('headerLines');
+        const combineStr  = document.getElementById('combineStr').value;
+        rows     = collapseHeaders(parsedRows, headerLines, combineStr);
+        baseName = currentFile.name.replace(/\.[^.]+$/, '');
+    }
+
+    const csvFilename = baseName + '.' + fmt.ext;
+    const content = generateCsvw(rows, csvFilename);
+    if (!content)
+        return;
+
+    const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = csvFilename + '-metadata.json';
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -349,6 +416,7 @@ uploadArea.addEventListener('drop', e => {
 });
 
 document.getElementById('convertBtn').addEventListener('click', convert);
+document.getElementById('csvwBtn').addEventListener('click', downloadCsvw);
 document.getElementById('commentLines').addEventListener('input', reparse);
 document.getElementById('headerLines').addEventListener('input', reparse);
 document.getElementById('combineStr').addEventListener('input', reparse);
