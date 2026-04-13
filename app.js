@@ -99,7 +99,7 @@ function setOutputVisible(visible) {
     document.getElementById('previewSection').style.display = block;
     document.getElementById('outputOptions').style.display  = block;
     document.getElementById('actionRow').style.display      = flex;
-    document.getElementById('csvwNote').style.display       = block;
+    document.getElementById('csvwNote').style.display       = flex;
 }
 
 function updateFileInfo() {

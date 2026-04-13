@@ -212,20 +212,20 @@
         #csvwBtn:hover  { background: #f5f7ff; }
         #csvwBtn:active { background: #ebefff; }
 
-        .csvw-note {
+        .download-note {
             display: none;
             margin-top: 0.45rem;
-            font-size: 0.75rem;
+            font-size: 0.85rem;
             color: #999;
-            text-align: center;
+            justify-content: space-between;
         }
 
-        .csvw-note a {
+        .download-note a {
             color: #4263eb;
             text-decoration: none;
         }
 
-        .csvw-note a:hover { text-decoration: underline; }
+        .download-note a:hover { text-decoration: underline; }
 
         /* Spinner row */
         .spinner-row {
@@ -448,10 +448,10 @@
             <button id="convertBtn">Download Data</button>
             <button id="csvwBtn">Download Metadata</button>
         </div>
-        <p class="csvw-note" id="csvwNote">
-            Metadata uses the <a href="https://csvw.org" target="_blank" rel="noopener">CSVW standard</a>.
-            Column types may be inferred from values.
-        </p>
+        <div class="download-note" id="csvwNote">
+            <span>Output follows <a href="https://www.rfc-editor.org/rfc/rfc4180" target="_blank" rel="noopener">RFC 4180</a> but with LF line endings.</span>
+            <span>Metadata uses the <a href="https://csvw.org" target="_blank" rel="noopener">CSVW standard</a>. Data types may be inferred.</span>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>

@@ -10,6 +10,9 @@ Live on GitHub Pages at [xangregg.github.io/commacomma](https://xangregg.github.
 
 **Supported output formats:** CSV, TSV, SSV
 
+Output follows [RFC 4180](https://www.rfc-editor.org/rfc/rfc4180) with LF line endings instead of CRLF.
+Fields are quoted only when they contain the delimiter, a double-quote, or a newline.
+
 R files (`.rds`, `.rdata`, `.rda`) are read-only inputs.
 Data frames and matrices are extracted; one output file is produced per table.
 
