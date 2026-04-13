@@ -1,6 +1,7 @@
 import { FORMATS, detectFormatFromExt, sniffFormat } from './formats.js';
 import { parseDelimited, serializeDelimited } from './parser.js';
 import { parseRFile } from './rds.js';
+import { parseSavFile } from './spss.js';
 import { generateCsvw } from './csvw.js';
 
 const MAX_PREVIEW_ROWS = 100;
@@ -168,9 +169,9 @@ function renderPreview(rows, headerLines) {
     setOutputVisible(true);
 }
 
-function isRExtension(filename) {
+function isBinaryExtension(filename) {
     const ext = filename.split('.').pop().toLowerCase();
-    return ext === 'rds' || ext === 'rdata' || ext === 'rda';
+    return ext === 'rds' || ext === 'rdata' || ext === 'rda' || ext === 'sav';
 }
 
 async function loadFile(file) {
@@ -193,8 +194,8 @@ async function loadFile(file) {
     document.getElementById('rTablesSection').style.display = 'none';
 
     try {
-        if (isRExtension(file.name))
-            await loadRData(file);
+        if (isBinaryExtension(file.name))
+            await loadBinaryData(file);
         else
             await loadTextData(file);
     } catch (err) {
@@ -223,9 +224,12 @@ async function loadTextData(file) {
     reparse();
 }
 
-async function loadRData(file) {
+async function loadBinaryData(file) {
+    const ext    = file.name.split('.').pop().toLowerCase();
     const buffer = await file.arrayBuffer();
-    rTables = await parseRFile(buffer, file.name);
+    rTables = ext === 'sav'
+        ? await parseSavFile(buffer, file.name)
+        : await parseRFile(buffer, file.name);
 
     if (rTables.length === 0) {
         showError('No data tables found in R file.');
