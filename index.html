@@ -331,6 +331,23 @@
             text-align: right;
         }
 
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #555;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
+            accent-color: #4263eb;
+        }
+
         /* Output section */
         #outputOptions {
             display: none;
@@ -441,6 +458,12 @@
             <div class="option-group">
                 <div class="option-label">Output Format</div>
                 <div class="format-buttons" id="outputButtons"></div>
+            </div>
+            <div class="option-group" id="valueLabelsOption" style="display:none">
+                <label class="checkbox-option">
+                    <input type="checkbox" id="applyLabelsCheck">
+                    Apply value labels
+                </label>
             </div>
         </div>
 

@@ -169,6 +169,32 @@ function renderPreview(rows, headerLines) {
     setOutputVisible(true);
 }
 
+function applyValueLabels(rows, columnMeta) {
+    const [header, ...dataRows] = rows;
+    return [header, ...dataRows.map(row =>
+        row.map((val, i) => columnMeta[i]?.valueLabels?.[val] ?? val)
+    )];
+}
+
+function labelsApplied() {
+    return document.getElementById('applyLabelsCheck').checked;
+}
+
+function getActiveRows() {
+    const table = rTables[rTableIndex];
+    return labelsApplied() ? applyValueLabels(table.rows, table.columnMeta) : table.rows;
+}
+
+function getActiveColumnMeta() {
+    const table = rTables[rTableIndex];
+    if (!labelsApplied()) return table.columnMeta;
+    return table.columnMeta?.map(m => {
+        if (!m?.valueLabels) return m;
+        const { valueLabels, ...rest } = m;
+        return Object.keys(rest).length > 0 ? rest : null;
+    }) ?? null;
+}
+
 function isBinaryExtension(filename) {
     const ext = filename.split('.').pop().toLowerCase();
     return ext === 'rds' || ext === 'rdata' || ext === 'rda' || ext === 'sav';
@@ -187,6 +213,8 @@ async function loadFile(file) {
     currentFile = null;
     rTables = null;
     rTableIndex = 0;
+    document.getElementById('applyLabelsCheck').checked = false;
+    document.getElementById('valueLabelsOption').style.display = 'none';
 
     setOutputVisible(false);
     document.getElementById('inputOptions').style.display   = 'none';
@@ -284,6 +312,10 @@ function selectRTable(index) {
         ? `Download "${table.name}"`
         : 'Download Data';
 
+    const hasLabels = table.columnMeta?.some(m => m?.valueLabels != null) ?? false;
+    document.getElementById('applyLabelsCheck').checked = false;
+    document.getElementById('valueLabelsOption').style.display = hasLabels ? 'block' : 'none';
+
     renderPreview(table.rows, 1);
     setOutputVisible(true);
 }
@@ -293,9 +325,8 @@ function convert() {
     let outputRows, downloadName;
 
     if (rTables) {
-        const table = rTables[rTableIndex];
-        outputRows   = table.rows;
-        downloadName = table.name;
+        outputRows   = getActiveRows();
+        downloadName = rTables[rTableIndex].name;
     } else {
         if (!parsedRows)
             return;
@@ -321,9 +352,8 @@ function downloadCsvw() {
     let rows, baseName;
 
     if (rTables) {
-        const table = rTables[rTableIndex];
-        rows     = table.rows;
-        baseName = table.name;
+        rows     = getActiveRows();
+        baseName = rTables[rTableIndex].name;
     } else {
         if (!parsedRows)
             return;
@@ -334,7 +364,7 @@ function downloadCsvw() {
     }
 
     const csvFilename = baseName + '.' + fmt.ext;
-    const meta    = rTables ? rTables[rTableIndex].columnMeta : null;
+    const meta    = rTables ? getActiveColumnMeta() : null;
     const content = generateCsvw(rows, csvFilename, meta);
     if (!content)
         return;
@@ -390,6 +420,10 @@ uploadArea.addEventListener('drop', e => {
 
 document.getElementById('convertBtn').addEventListener('click', convert);
 document.getElementById('csvwBtn').addEventListener('click', downloadCsvw);
+document.getElementById('applyLabelsCheck').addEventListener('change', () => {
+    if (rTables)
+        renderPreview(getActiveRows(), 1);
+});
 document.getElementById('commentLines').addEventListener('input', reparse);
 document.getElementById('headerLines').addEventListener('input', reparse);
 document.getElementById('combineStr').addEventListener('input', reparse);
