@@ -5,6 +5,13 @@
 const SYSMIS_LO = 0xFFFFFFFF;
 const SYSMIS_HI = 0xFFEFFFFF;
 
+// Seconds between SPSS epoch (Oct 14, 1582) and Unix epoch (Jan 1, 1970)
+const SPSS_DATE_OFFSET = 12219292800;
+
+// Print format type codes that represent calendar dates (value = seconds since SPSS epoch)
+const DATE_FORMATS     = new Set([20, 23, 24, 28, 29, 30, 38, 39]);
+const DATETIME_FORMATS = new Set([22]);
+
 function isSysmis(view, off) {
     return view.getUint32(off,     true) === SYSMIS_LO
         && view.getUint32(off + 4, true) === SYSMIS_HI;
@@ -93,6 +100,8 @@ export async function parseSavFile(arrayBuffer, filename) {
     const vars      = [];
     const varBySlot = []; // null for continuation slots
     let pendingVL   = null; // value-label map waiting for its type-4 record
+    let sub13Text   = null; // subtype-13 long variable names (applied after loop)
+    let vlsData     = null; // subtype-14 very long string map (applied after loop)
 
     let pos = 176;
     while (pos + 4 <= bytes.byteLength) {
@@ -103,6 +112,7 @@ export async function parseSavFile(arrayBuffer, filename) {
             const type     = view.getInt32(pos,      true);
             const hasLabel = view.getInt32(pos + 4,  true);
             const nMissing = view.getInt32(pos + 8,  true);
+            const fmtType  = (view.getInt32(pos + 12, true) >>> 16) & 0xFF;
             const nameRaw  = bytes.subarray(pos + 20, pos + 28);
             pos += 28;
 
@@ -121,27 +131,30 @@ export async function parseSavFile(arrayBuffer, filename) {
                 varBySlot.push(null);
             } else {
                 const name = decode(nameRaw, 'latin1').trimEnd();
-                const v    = { name, type, label, firstSlot: varBySlot.length, nSlots: 1,
-                               valueLabels: null };
+                const v    = { name, shortName: name, type, fmtType, label,
+                               firstSlot: varBySlot.length, nSlots: 1, valueLabels: null };
                 vars.push(v);
                 varBySlot.push(v);
             }
 
         } else if (rt === 3) {
-            // Value labels — always immediately followed by a type-4 record
+            // Value labels — always immediately followed by a type-4 record.
+            // Store raw 8-byte values; key conversion (float64 vs string) happens
+            // in type-4 once we know the variable type.
             const n      = view.getInt32(pos, true); pos += 4;
-            const labels = new Map();
+            const labels = [];
             for (let i = 0; i < n; i++) {
-                const val = view.getFloat64(pos, true); pos += 8;
-                const ll  = bytes[pos];                 pos += 1;
+                const raw = bytes.slice(pos, pos + 8); pos += 8;
+                const ll  = bytes[pos];                pos += 1;
                 const lbl = decode(bytes.subarray(pos, pos + ll), encoding);
                 pos += ll + (8 - (1 + ll) % 8) % 8;
-                labels.set(String(val), lbl);
+                labels.push([raw, lbl]);
             }
             pendingVL = labels;
 
         } else if (rt === 4) {
-            // Assign pending value labels to the referenced variables
+            // Assign pending value labels to the referenced variables.
+            // Convert the 8-byte key to string (numeric) or trimmed text (string).
             const n = view.getInt32(pos, true); pos += 4;
             for (let i = 0; i < n; i++) {
                 const idx = view.getInt32(pos, true); pos += 4;
@@ -149,7 +162,16 @@ export async function parseSavFile(arrayBuffer, filename) {
                     const v = varBySlot[idx - 1];
                     if (v) {
                         const vl = {};
-                        for (const [code, lbl] of pendingVL) vl[code] = lbl;
+                        for (const [raw, lbl] of pendingVL) {
+                            let key;
+                            if (v.type === 0) {
+                                const dv = new DataView(raw.buffer, raw.byteOffset, 8);
+                                key = String(dv.getFloat64(0, true));
+                            } else {
+                                key = decode(raw.subarray(0, Math.min(v.type, 8)), encoding).trimEnd();
+                            }
+                            vl[key] = lbl;
+                        }
                         v.valueLabels = vl;
                     }
                 }
@@ -164,22 +186,59 @@ export async function parseSavFile(arrayBuffer, filename) {
             const size    = view.getInt32(pos, true); pos += 4;
             const count   = view.getInt32(pos, true); pos += 4;
             const len     = size * count;
-            if (subtype === 13) {
-                // Long variable names: "SHORTNAME=LongName\tSHORTNAME=LongName"
-                const text = decode(bytes.subarray(pos, pos + len), encoding);
-                for (const pair of text.split('\t')) {
-                    const eq = pair.indexOf('=');
-                    if (eq < 1) continue;
-                    const short = pair.slice(0, eq).trimEnd().toUpperCase();
-                    const long  = pair.slice(eq + 1).replace(/\0.*/, '');
-                    if (long) {
-                        const v = vars.find(v => v.name.toUpperCase() === short);
-                        if (v) v.name = long;
-                    }
-                }
-            }
+            if (subtype === 13)
+                sub13Text = decode(bytes.subarray(pos, pos + len), encoding);
+            else if (subtype === 14)
+                vlsData = bytes.subarray(pos, pos + len);
             pos += len;
         }
+    }
+
+    // ── Apply subtype-13 long variable names ──────────────────────────────────
+    if (sub13Text) {
+        for (const pair of sub13Text.split('\t')) {
+            const eq = pair.indexOf('=');
+            if (eq < 1) continue;
+            const short = pair.slice(0, eq).trimEnd().toUpperCase();
+            const long  = pair.slice(eq + 1).replace(/\0.*/, '');
+            if (long) {
+                const v = vars.find(v => v.shortName.toUpperCase() === short);
+                if (v) v.name = long;
+            }
+        }
+    }
+
+    // ── Apply subtype-14 Very Long String merging ─────────────────────────────
+    // Strings > 255 bytes are split into consecutive segment variables, each of
+    // width 255 (except the last). Subtype 14 maps the first segment's short
+    // name to the true total width; we merge the segments into one variable.
+    if (vlsData) {
+        const vlsMap = new Map();
+        // Format: "NAME=width\0\tNAME=width\0\t..." — pairs are null-terminated,
+        // tab-separated; name and width within each pair are separated by '='.
+        const text = decode(vlsData, encoding);
+        for (let chunk of text.split('\0')) {
+            chunk = chunk.replace(/^[\t\r\n ]+/, '');
+            const eq = chunk.indexOf('=');
+            if (eq < 1) continue;
+            const segName   = chunk.slice(0, eq).toUpperCase();
+            const trueWidth = parseInt(chunk.slice(eq + 1), 10);
+            if (segName && !isNaN(trueWidth)) vlsMap.set(segName, trueWidth);
+        }
+        const toRemove = new Set();
+        for (const [segName, trueWidth] of vlsMap) {
+            const firstIdx = vars.findIndex(v => v.shortName.toUpperCase() === segName && !toRemove.has(v));
+            if (firstIdx < 0) continue;
+            const first   = vars[firstIdx];
+            const numSegs = Math.ceil(trueWidth / 255);
+            for (let s = 1; s < numSegs && firstIdx + s < vars.length; s++) {
+                first.nSlots += vars[firstIdx + s].nSlots;
+                toRemove.add(vars[firstIdx + s]);
+            }
+            first.type = trueWidth;
+        }
+        if (toRemove.size > 0)
+            vars.splice(0, vars.length, ...vars.filter(v => !toRemove.has(v)));
     }
 
     // ── Read data ─────────────────────────────────────────────────────────────
@@ -258,6 +317,14 @@ export async function parseSavFile(arrayBuffer, filename) {
                 if (isSysmis(dv, 0)) return '';
                 const val = dv.getFloat64(0, true);
                 if (!isFinite(val)) return '';
+                if (DATE_FORMATS.has(v.fmtType)) {
+                    const d = new Date((val - SPSS_DATE_OFFSET) * 1000);
+                    return d.toISOString().slice(0, 10);
+                }
+                if (DATETIME_FORMATS.has(v.fmtType)) {
+                    const d = new Date((val - SPSS_DATE_OFFSET) * 1000);
+                    return d.toISOString().slice(0, 19);
+                }
                 return String(val);
             } else {
                 // String: concatenate nSlots × 8 bytes, take first type bytes, right-trim
