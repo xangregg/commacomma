@@ -5,8 +5,9 @@
 const SYSMIS_LO = 0xFFFFFFFF;
 const SYSMIS_HI = 0xFFEFFFFF;
 
-// Seconds between SPSS epoch (Oct 14, 1582) and Unix epoch (Jan 1, 1970)
-const SPSS_DATE_OFFSET = 12219292800;
+// Seconds between SPSS epoch (Oct 14, 1582, JDN 2299160) and Unix epoch (Jan 1, 1970, JDN 2440588)
+// Difference: 141428 days × 86400 = 12219379200
+const SPSS_DATE_OFFSET = 12219379200;
 
 // Print format type codes that represent calendar dates (value = seconds since SPSS epoch)
 const DATE_FORMATS     = new Set([20, 23, 24, 28, 29, 30, 38, 39]);
