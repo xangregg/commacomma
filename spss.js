@@ -103,6 +103,7 @@ export async function parseSavFile(arrayBuffer, filename) {
     let pendingVL   = null; // value-label map waiting for its type-4 record
     let sub13Text   = null; // subtype-13 long variable names (applied after loop)
     let vlsData     = null; // subtype-14 very long string map (applied after loop)
+    let sub21Data   = null; // subtype-21 extended value labels for wide strings (applied after loop)
 
     let pos = 176;
     while (pos + 4 <= bytes.byteLength) {
@@ -191,6 +192,8 @@ export async function parseSavFile(arrayBuffer, filename) {
                 sub13Text = decode(bytes.subarray(pos, pos + len), encoding);
             else if (subtype === 14)
                 vlsData = bytes.subarray(pos, pos + len);
+            else if (subtype === 21)
+                sub21Data = bytes.subarray(pos, pos + len);
             pos += len;
         }
     }
@@ -240,6 +243,45 @@ export async function parseSavFile(arrayBuffer, filename) {
         }
         if (toRemove.size > 0)
             vars.splice(0, vars.length, ...vars.filter(v => !toRemove.has(v)));
+    }
+
+    // ── Apply subtype-21 extended value labels (string vars wider than 8 bytes) ─
+    // Format per group: int32 name_len, char[name_len] name, int32 var_width,
+    // int32 n_labels, then for each: int32 value_len, char[value_len] value,
+    // int32 label_len, char[label_len] label.
+    // Uses the long variable name (post-subtype-13), not the 8-char truncated name.
+    if (sub21Data) {
+        const dv21 = new DataView(sub21Data.buffer, sub21Data.byteOffset, sub21Data.byteLength);
+        const varByName = new Map();
+        for (const v of vars) {
+            varByName.set(v.name.toUpperCase(), v);
+            varByName.set(v.shortName.toUpperCase(), v);
+        }
+        let i = 0;
+        while (i + 12 <= sub21Data.length) {
+            const nameLen  = dv21.getInt32(i, true); i += 4;
+            if (i + nameLen + 8 > sub21Data.length) break;
+            const varName  = decode(sub21Data.subarray(i, i + nameLen), 'latin1').toUpperCase();
+            i += nameLen;
+            i += 4; // var_width (redundant with the variable's own type)
+            const nLabels  = dv21.getInt32(i, true); i += 4;
+            const v = varByName.get(varName);
+            for (let j = 0; j < nLabels; j++) {
+                if (i + 4 > sub21Data.length) break;
+                const valueLen = dv21.getInt32(i, true); i += 4;
+                if (i + valueLen + 4 > sub21Data.length) break;
+                const rawVal   = sub21Data.subarray(i, i + valueLen); i += valueLen;
+                const labelLen = dv21.getInt32(i, true); i += 4;
+                if (i + labelLen > sub21Data.length) break;
+                const label    = decode(sub21Data.subarray(i, i + labelLen), encoding);
+                i += labelLen;
+                if (v) {
+                    const key = decode(rawVal, encoding).trimEnd();
+                    if (!v.valueLabels) v.valueLabels = {};
+                    v.valueLabels[key] = label;
+                }
+            }
+        }
     }
 
     // ── Read data ─────────────────────────────────────────────────────────────
