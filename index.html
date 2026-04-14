@@ -338,12 +338,14 @@
         }
 
         #valueLabelsButtons,
+        #inputButtons,
         #outputButtons {
             width: fit-content;
             gap: 0;
         }
 
         #valueLabelsButtons .format-btn,
+        #inputButtons .format-btn,
         #outputButtons .format-btn {
             flex: none;
             padding: 0.5rem 1rem;
@@ -352,17 +354,20 @@
         }
 
         #valueLabelsButtons .format-btn:first-child,
+        #inputButtons .format-btn:first-child,
         #outputButtons .format-btn:first-child {
             border-radius: 8px 0 0 8px;
             margin-left: 0;
         }
 
         #valueLabelsButtons .format-btn:last-child,
+        #inputButtons .format-btn:last-child,
         #outputButtons .format-btn:last-child {
             border-radius: 0 8px 8px 0;
         }
 
         #valueLabelsButtons .format-btn.selected,
+        #inputButtons .format-btn.selected,
         #outputButtons .format-btn.selected {
             z-index: 1;
         }
