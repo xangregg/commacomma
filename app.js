@@ -169,25 +169,44 @@ function renderPreview(rows, headerLines) {
     setOutputVisible(true);
 }
 
-function applyValueLabels(rows, columnMeta) {
-    const [header, ...dataRows] = rows;
-    return [header, ...dataRows.map(row =>
-        row.map((val, i) => columnMeta[i]?.valueLabels?.[val] ?? val)
-    )];
+function getLabelsMode() {
+    return document.querySelector('#valueLabelsButtons .format-btn.selected')?.dataset.mode ?? 'metadata';
 }
 
-function labelsApplied() {
-    return document.getElementById('applyLabelsCheck').checked;
+function setLabelsMode(mode) {
+    document.querySelectorAll('#valueLabelsButtons .format-btn').forEach(btn =>
+        btn.classList.toggle('selected', btn.dataset.mode === mode)
+    );
+    document.getElementById('valueLabelsCombineLabel').style.display =
+        mode === 'combine' ? 'flex' : 'none';
+}
+
+function applyValueLabels(rows, columnMeta) {
+    const mode = getLabelsMode();
+    if (mode === 'metadata')
+        return rows;
+    const sep = document.getElementById('valueLabelsCombineStr').value;
+    const [header, ...dataRows] = rows;
+    return [header, ...dataRows.map(row =>
+        row.map((val, i) => {
+            const label = columnMeta[i]?.valueLabels?.[val];
+            if (label == null)
+                return val;
+            if (mode === 'replace')
+                return label;
+            return val + sep + label;
+        })
+    )];
 }
 
 function getActiveRows() {
     const table = rTables[rTableIndex];
-    return labelsApplied() ? applyValueLabels(table.rows, table.columnMeta) : table.rows;
+    return applyValueLabels(table.rows, table.columnMeta);
 }
 
 function getActiveColumnMeta() {
     const table = rTables[rTableIndex];
-    if (!labelsApplied()) return table.columnMeta;
+    if (getLabelsMode() === 'metadata') return table.columnMeta;
     return table.columnMeta?.map(m => {
         if (!m?.valueLabels) return m;
         const { valueLabels, ...rest } = m;
@@ -213,7 +232,7 @@ async function loadFile(file) {
     currentFile = null;
     rTables = null;
     rTableIndex = 0;
-    document.getElementById('applyLabelsCheck').checked = false;
+    setLabelsMode('metadata');
     document.getElementById('valueLabelsOption').style.display = 'none';
 
     setOutputVisible(false);
@@ -313,7 +332,7 @@ function selectRTable(index) {
         : 'Download Data';
 
     const hasLabels = table.columnMeta?.some(m => m?.valueLabels != null) ?? false;
-    document.getElementById('applyLabelsCheck').checked = false;
+    setLabelsMode('metadata');
     document.getElementById('valueLabelsOption').style.display = hasLabels ? 'block' : 'none';
 
     renderPreview(table.rows, 1);
@@ -420,8 +439,14 @@ uploadArea.addEventListener('drop', e => {
 
 document.getElementById('convertBtn').addEventListener('click', convert);
 document.getElementById('csvwBtn').addEventListener('click', downloadCsvw);
-document.getElementById('applyLabelsCheck').addEventListener('change', () => {
-    if (rTables)
+document.getElementById('valueLabelsButtons').addEventListener('click', e => {
+    const btn = e.target.closest('.format-btn');
+    if (!btn || !rTables) return;
+    setLabelsMode(btn.dataset.mode);
+    renderPreview(getActiveRows(), 1);
+});
+document.getElementById('valueLabelsCombineStr').addEventListener('input', () => {
+    if (rTables && getLabelsMode() === 'combine')
         renderPreview(getActiveRows(), 1);
 });
 document.getElementById('commentLines').addEventListener('input', reparse);

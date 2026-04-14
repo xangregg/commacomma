@@ -331,21 +331,63 @@
             text-align: right;
         }
 
-        .checkbox-option {
+        .vl-control-row {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: #555;
-            cursor: pointer;
-            user-select: none;
+            gap: 0.75rem;
         }
 
-        .checkbox-option input[type="checkbox"] {
-            width: 1rem;
-            height: 1rem;
-            cursor: pointer;
-            accent-color: #4263eb;
+        #valueLabelsButtons,
+        #outputButtons {
+            width: fit-content;
+            gap: 0;
+        }
+
+        #valueLabelsButtons .format-btn,
+        #outputButtons .format-btn {
+            flex: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0;
+            margin-left: -2px;
+        }
+
+        #valueLabelsButtons .format-btn:first-child,
+        #outputButtons .format-btn:first-child {
+            border-radius: 8px 0 0 8px;
+            margin-left: 0;
+        }
+
+        #valueLabelsButtons .format-btn:last-child,
+        #outputButtons .format-btn:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+
+        #valueLabelsButtons .format-btn.selected,
+        #outputButtons .format-btn.selected {
+            z-index: 1;
+        }
+
+        .vl-combine-label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .vl-combine-label input[type="text"] {
+            width: 4rem;
+            padding: 0.45rem 0.5rem;
+            border: 2px solid #e0e4ea;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            color: #333;
+        }
+
+        .vl-combine-label input:focus {
+            outline: none;
+            border-color: #4263eb;
         }
 
         /* Output section */
@@ -446,6 +488,21 @@
             </div>
         </div>
 
+        <div class="option-group" id="valueLabelsOption" style="display:none;margin-top:1.5rem">
+            <div class="option-label">Value Labels</div>
+            <div class="vl-control-row">
+                <div class="format-buttons" id="valueLabelsButtons">
+                    <button type="button" class="format-btn selected" data-mode="metadata">Metadata</button>
+                    <button type="button" class="format-btn" data-mode="replace">Replace</button>
+                    <button type="button" class="format-btn" data-mode="combine">Combine</button>
+                </div>
+                <label class="vl-combine-label" id="valueLabelsCombineLabel" style="display:none">
+                    with
+                    <input type="text" id="valueLabelsCombineStr" value=":">
+                </label>
+            </div>
+        </div>
+
         <div id="previewSection">
             <div class="option-label">Preview</div>
             <div class="preview-scroll">
@@ -458,12 +515,6 @@
             <div class="option-group">
                 <div class="option-label">Output Format</div>
                 <div class="format-buttons" id="outputButtons"></div>
-            </div>
-            <div class="option-group" id="valueLabelsOption" style="display:none">
-                <label class="checkbox-option">
-                    <input type="checkbox" id="applyLabelsCheck">
-                    Apply value labels
-                </label>
             </div>
         </div>
 
