@@ -72,17 +72,252 @@ function isDatetimeFmt(fmt) {
     return /^%-?t[cC]/.test(fmt);
 }
 
+// %tcHH:MM:SS and similar masks with no date tokens → output time only
+function isTimeOnlyFmt(fmt) {
+    const m = fmt.match(/^%-?t[cC](.+)$/);
+    if (!m) return false;
+    return !/CC|YY|NN|DD|jjj|[Mm]on(th)?|MONTH|MON/.test(m[1]);
+}
+
+function formatDatetime(raw, timeOnly) {
+    const d   = new Date(raw - STATA_MS_OFFSET);
+    const ms  = ((raw % 1000) + 1000) % 1000;
+    const frac = ms !== 0 ? '.' + String(ms).padStart(3, '0') : '';
+    if (timeOnly)
+        return d.toISOString().slice(11, 19) + frac;
+    return d.toISOString().slice(0, 19) + frac;
+}
+
+// Two byte-code schemes coexist in pre-117 files:
+//   Numeric codes: 255=byte  254=int  253=long  252=float  251=double  1–244=strN
+//   ASCII codes:    98='b'   105='i'  108='l'   102='f'    100='d'     1–244=strN
+// Both must be recognised because different tools wrote different schemes.
+
+function parseLegacyDtaFile(bytes, view, filename) {
+    let pos = 0;
+    const release = bytes[pos++];
+    if (release < 104)
+        throw new Error(`Stata format ${release} (pre-104) is not supported.`);
+
+    const le = bytes[pos++] !== 1; // 1 = big-endian (MSF), 2 = little-endian (LSF)
+    pos++; // filetype
+    pos++; // unused
+
+    const K = view.getUint16(pos, le); pos += 2;
+    const N = view.getUint32(pos, le); pos += 4;
+    pos += 81; // dataset label (80 chars + null)
+    pos += 18; // timestamp
+    // pos == 109
+
+    // Field widths vary by format version
+    const typeWidth = release >= 114 ? 2 : 1;
+    const nameWidth = release >= 110 ? 33 : 9;
+    const fmtWidth  = release >= 105 ? 12 : 7;
+    const lblWidth  = release >= 110 ? 33 : 9;
+    const vlblWidth = 81;
+
+    // ── Type list ─────────────────────────────────────────────────────────────
+    const types = [];
+    for (let i = 0; i < K; i++) {
+        types.push(typeWidth === 2 ? view.getUint16(pos, le) : bytes[pos]);
+        pos += typeWidth;
+    }
+
+    // ── Variable names ────────────────────────────────────────────────────────
+    const varnames = [];
+    for (let i = 0; i < K; i++) {
+        varnames.push(readNullStr(bytes, pos, nameWidth));
+        pos += nameWidth;
+    }
+
+    // ── Sort list ─────────────────────────────────────────────────────────────
+    pos += (K + 1) * 2;
+
+    // ── Display formats ───────────────────────────────────────────────────────
+    const formats = [];
+    for (let i = 0; i < K; i++) {
+        formats.push(readNullStr(bytes, pos, fmtWidth));
+        pos += fmtWidth;
+    }
+
+    // ── Value label names ─────────────────────────────────────────────────────
+    const vlNames = [];
+    for (let i = 0; i < K; i++) {
+        vlNames.push(readNullStr(bytes, pos, lblWidth));
+        pos += lblWidth;
+    }
+
+    // ── Variable labels ───────────────────────────────────────────────────────
+    const varlabels = [];
+    for (let i = 0; i < K; i++) {
+        varlabels.push(readNullStr(bytes, pos, vlblWidth));
+        pos += vlblWidth;
+    }
+
+    // ── Expansion fields ──────────────────────────────────────────────────────
+    // Each entry: 1-byte type + 4-byte length (for 108+) or 2-byte length (older)
+    const expLenWidth = release >= 108 ? 4 : 2;
+    while (pos < bytes.length) {
+        const xtype = bytes[pos]; pos++;
+        const xlen = expLenWidth === 4
+            ? view.getUint32(pos, le)
+            : view.getUint16(pos, le);
+        pos += expLenWidth;
+        if (xtype === 0) break;
+        pos += xlen;
+    }
+
+    // ── Field widths for data ─────────────────────────────────────────────────
+    const widths = types.map(t => {
+        if (typeWidth === 1) {
+            if (t === 255 || t === 100) return 8; // double  ('d')
+            if (t === 254 || t === 102) return 4; // float   ('f')
+            if (t === 253 || t === 108) return 4; // long    ('l')
+            if (t === 252 || t === 105) return 2; // int     ('i')
+            if (t === 251 || t ===  98) return 1; // byte    ('b')
+            if (t >= 1 && t <= 244)     return t; // strN
+            throw new Error(`Unknown Stata type code ${t}`);
+        } else {
+            // Same uint16 codes as format 117+, but no strL
+            if (t === TYPE_DOUBLE) return 8;
+            if (t === TYPE_FLOAT)  return 4;
+            if (t === TYPE_LONG)   return 4;
+            if (t === TYPE_INT)    return 2;
+            if (t === TYPE_BYTE)   return 1;
+            if (t >= 1 && t <= 2045) return t; // strN
+            throw new Error(`Unknown Stata type code ${t}`);
+        }
+    });
+
+    // ── Data ──────────────────────────────────────────────────────────────────
+    const rawData = [];
+    for (let j = 0; j < N; j++) {
+        const obs = [];
+        for (let i = 0; i < K; i++) {
+            const t = types[i];
+            let val;
+            if (typeWidth === 1) {
+                if (t === 251 || t === 98) {
+                    val = view.getInt8(pos);
+                    if (val > MISSING_BYTE) val = null;
+                } else if (t === 252 || t === 105) {
+                    val = view.getInt16(pos, le);
+                    if (val > MISSING_INT) val = null;
+                } else if (t === 253 || t === 108) {
+                    val = view.getInt32(pos, le);
+                    if (val > MISSING_LONG) val = null;
+                } else if (t === 254 || t === 102) {
+                    val = isMissingFloat(view, pos, le) ? null : view.getFloat32(pos, le);
+                } else if (t === 255 || t === 100) {
+                    val = isMissingDouble(view, pos, le) ? null : view.getFloat64(pos, le);
+                } else {
+                    const raw = bytes.subarray(pos, pos + t);
+                    const nullIdx = raw.indexOf(0);
+                    val = new TextDecoder('utf-8').decode(nullIdx >= 0 ? raw.subarray(0, nullIdx) : raw);
+                }
+            } else {
+                if (t === TYPE_BYTE) {
+                    val = view.getInt8(pos);
+                    if (val > MISSING_BYTE) val = null;
+                } else if (t === TYPE_INT) {
+                    val = view.getInt16(pos, le);
+                    if (val > MISSING_INT) val = null;
+                } else if (t === TYPE_LONG) {
+                    val = view.getInt32(pos, le);
+                    if (val > MISSING_LONG) val = null;
+                } else if (t === TYPE_FLOAT) {
+                    val = isMissingFloat(view, pos, le) ? null : view.getFloat32(pos, le);
+                } else if (t === TYPE_DOUBLE) {
+                    val = isMissingDouble(view, pos, le) ? null : view.getFloat64(pos, le);
+                } else {
+                    const raw = bytes.subarray(pos, pos + t);
+                    const nullIdx = raw.indexOf(0);
+                    val = new TextDecoder('utf-8').decode(nullIdx >= 0 ? raw.subarray(0, nullIdx) : raw);
+                }
+            }
+            obs.push(val);
+            pos += widths[i];
+        }
+        rawData.push(obs);
+    }
+
+    // ── Value labels ──────────────────────────────────────────────────────────
+    // Same structure as 117+ lbl blocks but without XML tags
+    const labelDefs = new Map();
+    while (pos + 4 < bytes.length) {
+        const recStart = pos;
+        const recLen = view.getInt32(pos, le); pos += 4;
+        if (recLen <= 0) break;
+        const labname = readNullStr(bytes, pos, lblWidth); pos += lblWidth;
+        pos += 3; // padding
+        const tblStart = pos;
+
+        const n      = view.getInt32(pos, le); pos += 4;
+        const txtlen = view.getInt32(pos, le); pos += 4;
+        const offs = [];
+        for (let i = 0; i < n; i++) { offs.push(view.getInt32(pos, le)); pos += 4; }
+        const vals = [];
+        for (let i = 0; i < n; i++) { vals.push(view.getInt32(pos, le)); pos += 4; }
+
+        const txtBase = tblStart + 8 + 8 * n;
+        const map = {};
+        for (let i = 0; i < n; i++) {
+            const lbl = readNullStr(bytes, txtBase + offs[i], txtlen - offs[i]);
+            map[String(vals[i])] = lbl;
+        }
+        labelDefs.set(labname, map);
+        pos = tblStart + recLen;
+    }
+
+    // ── Assemble rows ─────────────────────────────────────────────────────────
+    const header = [...varnames];
+    const rows   = [header];
+    for (let j = 0; j < N; j++) {
+        const row = rawData[j].map((raw, i) => {
+            if (raw === null)
+                return '';
+            if (typeof raw === 'string')
+                return raw;
+            const fmt = formats[i];
+            if (isDateFmt(fmt))
+                return new Date((raw - STATA_DAY_OFFSET) * 86400000).toISOString().slice(0, 10);
+            if (isDatetimeFmt(fmt))
+                return formatDatetime(raw, isTimeOnlyFmt(fmt));
+            return String(raw);
+        });
+        rows.push(row);
+    }
+
+    // ── Column metadata ───────────────────────────────────────────────────────
+    const columnMeta = varnames.map((_, i) => {
+        const meta = {};
+        if (varlabels[i]) meta.label = varlabels[i];
+        const vlName = vlNames[i];
+        if (vlName) {
+            const vl = labelDefs.get(vlName);
+            if (vl) meta.valueLabels = vl;
+        }
+        return Object.keys(meta).length > 0 ? meta : null;
+    });
+
+    const name = filename.replace(/\.[^.]+$/, '');
+    return [{ name, rows, columnMeta }];
+}
+
 export async function parseDtaFile(arrayBuffer, filename) {
     const bytes = new Uint8Array(arrayBuffer);
     const view  = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+
+    if (bytes[0] !== 0x3C) // not '<', so it's a legacy flat-binary format
+        return parseLegacyDtaFile(bytes, view, filename);
 
     // ── Header ────────────────────────────────────────────────────────────────
     let pos = expectTag(bytes, 0, '<stata_dta>');
     pos = expectTag(bytes, pos, '<header>');
     pos = expectTag(bytes, pos, '<release>');
     const release = parseInt(new TextDecoder().decode(bytes.subarray(pos, pos + 3)));
-    if (release !== 118 && release !== 119)
-        throw new Error(`Unsupported Stata format ${release}; only 118/119 are supported.`);
+    if (release !== 117 && release !== 118 && release !== 119)
+        throw new Error(`Unsupported Stata format ${release}; only 117/118/119 are supported.`);
     pos += 3;
     pos = expectTag(bytes, pos, '</release>');
 
@@ -95,12 +330,23 @@ export async function parseDtaFile(arrayBuffer, filename) {
     const K = view.getUint16(pos, le); pos += 2;
     pos = expectTag(bytes, pos, '</K>');
 
+    // Format 117 (Stata 13): N is 4 bytes. Format 118+ (Stata 14+): N is 8 bytes.
     pos = expectTag(bytes, pos, '<N>');
-    const N = readUint64(view, pos, le); pos += 8;
+    let N;
+    if (release === 117) {
+        N = view.getUint32(pos, le); pos += 4;
+    } else {
+        N = readUint64(view, pos, le); pos += 8;
+    }
     pos = expectTag(bytes, pos, '</N>');
 
+    // Format 117: dataset label length is 1 byte. Format 118+: 2 bytes.
     pos = expectTag(bytes, pos, '<label>');
-    pos += 2 + view.getUint16(pos, le); // skip 2-byte length + label text
+    if (release === 117) {
+        pos += 1 + bytes[pos];
+    } else {
+        pos += 2 + view.getUint16(pos, le);
+    }
     pos = expectTag(bytes, pos, '</label>');
 
     pos = expectTag(bytes, pos, '<timestamp>');
@@ -122,11 +368,16 @@ export async function parseDtaFile(arrayBuffer, filename) {
     }
     pos = expectTag(bytes, pos, '</variable_types>');
 
+    // Field widths differ between format 117 (Stata 13) and 118/119 (Stata 14+).
+    const W = release === 117
+        ? { name: 33, fmt: 49, vlname: 33, label: 81 }
+        : { name: 129, fmt: 57, vlname: 129, label: 321 };
+
     // ── Variable names ────────────────────────────────────────────────────────
     pos = expectTag(bytes, pos, '<varnames>');
     const varnames = [];
     for (let i = 0; i < K; i++) {
-        varnames.push(readNullStr(bytes, pos, 129)); pos += 129;
+        varnames.push(readNullStr(bytes, pos, W.name)); pos += W.name;
     }
     pos = expectTag(bytes, pos, '</varnames>');
 
@@ -139,7 +390,7 @@ export async function parseDtaFile(arrayBuffer, filename) {
     pos = expectTag(bytes, pos, '<formats>');
     const formats = [];
     for (let i = 0; i < K; i++) {
-        formats.push(readNullStr(bytes, pos, 57)); pos += 57;
+        formats.push(readNullStr(bytes, pos, W.fmt)); pos += W.fmt;
     }
     pos = expectTag(bytes, pos, '</formats>');
 
@@ -147,7 +398,7 @@ export async function parseDtaFile(arrayBuffer, filename) {
     pos = expectTag(bytes, pos, '<value_label_names>');
     const vlNames = [];
     for (let i = 0; i < K; i++) {
-        vlNames.push(readNullStr(bytes, pos, 129)); pos += 129;
+        vlNames.push(readNullStr(bytes, pos, W.vlname)); pos += W.vlname;
     }
     pos = expectTag(bytes, pos, '</value_label_names>');
 
@@ -155,7 +406,7 @@ export async function parseDtaFile(arrayBuffer, filename) {
     pos = expectTag(bytes, pos, '<variable_labels>');
     const varlabels = [];
     for (let i = 0; i < K; i++) {
-        varlabels.push(readNullStr(bytes, pos, 321)); pos += 321;
+        varlabels.push(readNullStr(bytes, pos, W.label)); pos += W.label;
     }
     pos = expectTag(bytes, pos, '</variable_labels>');
 
@@ -244,7 +495,7 @@ export async function parseDtaFile(arrayBuffer, filename) {
     while (!peekTag(bytes, pos, '</value_labels>')) {
         pos = expectTag(bytes, pos, '<lbl>');
         const tblLen  = view.getInt32(pos, le); pos += 4;
-        const labname = readNullStr(bytes, pos, 129); pos += 129;
+        const labname = readNullStr(bytes, pos, W.vlname); pos += W.vlname;
         pos += 3; // padding
         const tblStart = pos;
 
@@ -287,7 +538,7 @@ export async function parseDtaFile(arrayBuffer, filename) {
             if (isDateFmt(fmt))
                 return new Date((raw - STATA_DAY_OFFSET) * 86400000).toISOString().slice(0, 10);
             if (isDatetimeFmt(fmt))
-                return new Date(raw - STATA_MS_OFFSET).toISOString().slice(0, 19);
+                return formatDatetime(raw, isTimeOnlyFmt(fmt));
             return String(raw);
         });
         rows.push(row);
