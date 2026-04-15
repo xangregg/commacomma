@@ -2,6 +2,7 @@ import { FORMATS, detectFormatFromExt, sniffFormat } from './formats.js';
 import { parseDelimited, serializeDelimited } from './parser.js';
 import { parseRFile } from './rds.js';
 import { parseSavFile } from './spss.js';
+import { parseDtaFile } from './dta.js';
 import { generateCsvw } from './csvw.js';
 
 const MAX_PREVIEW_ROWS = 100;
@@ -216,7 +217,7 @@ function getActiveColumnMeta() {
 
 function isBinaryExtension(filename) {
     const ext = filename.split('.').pop().toLowerCase();
-    return ext === 'rds' || ext === 'rdata' || ext === 'rda' || ext === 'sav';
+    return ext === 'rds' || ext === 'rdata' || ext === 'rda' || ext === 'sav' || ext === 'dta';
 }
 
 async function loadFile(file) {
@@ -274,9 +275,9 @@ async function loadTextData(file) {
 async function loadBinaryData(file) {
     const ext    = file.name.split('.').pop().toLowerCase();
     const buffer = await file.arrayBuffer();
-    rTables = ext === 'sav'
-        ? await parseSavFile(buffer, file.name)
-        : await parseRFile(buffer, file.name);
+    rTables = ext === 'sav' ? await parseSavFile(buffer, file.name)
+           : ext === 'dta' ? await parseDtaFile(buffer, file.name)
+           : await parseRFile(buffer, file.name);
 
     if (rTables.length === 0) {
         showError('No data tables found in R file.');

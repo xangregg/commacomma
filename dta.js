@@ -1,0 +1,310 @@
+// dta.js — Stata .dta format 118/119 reader
+// Reference: https://www.stata.com/help.cgi?dta
+
+// Days between Stata epoch (Jan 1, 1960) and Unix epoch (Jan 1, 1970).
+// Leap years in 1960–1969: 1960, 1964, 1968 → 3×366 + 7×365 = 3653 days.
+const STATA_DAY_OFFSET = 3653;
+const STATA_MS_OFFSET  = STATA_DAY_OFFSET * 86400 * 1000;
+
+// Numeric type codes
+const TYPE_STRL   = 32768;
+const TYPE_DOUBLE = 65526;
+const TYPE_FLOAT  = 65527;
+const TYPE_LONG   = 65528;
+const TYPE_INT    = 65529;
+const TYPE_BYTE   = 65530;
+
+// Missing value thresholds (values strictly above these are missing)
+const MISSING_BYTE   = 100;
+const MISSING_INT    = 32740;
+const MISSING_LONG   = 2147483620;
+
+function readNullStr(bytes, off, maxLen) {
+    let end = off;
+    while (end < off + maxLen && bytes[end] !== 0) end++;
+    return new TextDecoder('utf-8').decode(bytes.subarray(off, end));
+}
+
+function readUint64(dv, off, le) {
+    const lo = dv.getUint32(off + (le ? 0 : 4), le);
+    const hi = dv.getUint32(off + (le ? 4 : 0), le);
+    return hi * 2 ** 32 + lo;
+}
+
+// Read a 6-byte unsigned integer (strL observation index stored in <data>).
+function readUint48(dv, off, le) {
+    if (le)
+        return dv.getUint32(off, true) + dv.getUint16(off + 4, true) * 2 ** 32;
+    return dv.getUint16(off, false) * 2 ** 32 + dv.getUint32(off + 2, false);
+}
+
+// All double missing values have biased exponent ≥ 0x7FE (> max nonmissing 0x7FD...).
+function isMissingDouble(dv, off, le) {
+    const hi = le ? dv.getUint32(off + 4, true) : dv.getUint32(off, false);
+    return (hi & 0x7FFFFFFF) > 0x7FDFFFFF;
+}
+
+// All float missing values have biased exponent ≥ 0xFE (> max nonmissing 0x7EFF...).
+function isMissingFloat(dv, off, le) {
+    return (dv.getUint32(off, le) & 0x7FFFFFFF) > 0x7EFFFFFF;
+}
+
+function expectTag(bytes, pos, tag) {
+    for (let j = 0; j < tag.length; j++)
+        if (bytes[pos + j] !== tag.charCodeAt(j))
+            throw new Error(`Expected "${tag}" at offset ${pos}`);
+    return pos + tag.length;
+}
+
+function peekTag(bytes, pos, tag) {
+    for (let j = 0; j < tag.length; j++)
+        if (bytes[pos + j] !== tag.charCodeAt(j)) return false;
+    return true;
+}
+
+// %td / legacy %d → value is days since Jan 1, 1960
+function isDateFmt(fmt) {
+    return /^%-?(td|d(?!\d))/.test(fmt);
+}
+
+// %tc / %tC → value is milliseconds since Jan 1, 1960
+function isDatetimeFmt(fmt) {
+    return /^%-?t[cC]/.test(fmt);
+}
+
+export async function parseDtaFile(arrayBuffer, filename) {
+    const bytes = new Uint8Array(arrayBuffer);
+    const view  = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+
+    // ── Header ────────────────────────────────────────────────────────────────
+    let pos = expectTag(bytes, 0, '<stata_dta>');
+    pos = expectTag(bytes, pos, '<header>');
+    pos = expectTag(bytes, pos, '<release>');
+    const release = parseInt(new TextDecoder().decode(bytes.subarray(pos, pos + 3)));
+    if (release !== 118 && release !== 119)
+        throw new Error(`Unsupported Stata format ${release}; only 118/119 are supported.`);
+    pos += 3;
+    pos = expectTag(bytes, pos, '</release>');
+
+    pos = expectTag(bytes, pos, '<byteorder>');
+    const le = bytes[pos] === 0x4C; // 'L' for LSF (little-endian), 'M' for MSF
+    pos += 3;
+    pos = expectTag(bytes, pos, '</byteorder>');
+
+    pos = expectTag(bytes, pos, '<K>');
+    const K = view.getUint16(pos, le); pos += 2;
+    pos = expectTag(bytes, pos, '</K>');
+
+    pos = expectTag(bytes, pos, '<N>');
+    const N = readUint64(view, pos, le); pos += 8;
+    pos = expectTag(bytes, pos, '</N>');
+
+    pos = expectTag(bytes, pos, '<label>');
+    pos += 2 + view.getUint16(pos, le); // skip 2-byte length + label text
+    pos = expectTag(bytes, pos, '</label>');
+
+    pos = expectTag(bytes, pos, '<timestamp>');
+    pos += 1 + bytes[pos]; // skip 1-byte length + timestamp text
+    pos = expectTag(bytes, pos, '</timestamp>');
+
+    pos = expectTag(bytes, pos, '</header>');
+
+    // ── Map ───────────────────────────────────────────────────────────────────
+    pos = expectTag(bytes, pos, '<map>');
+    pos += 14 * 8; // 14 file-position entries × 8 bytes each
+    pos = expectTag(bytes, pos, '</map>');
+
+    // ── Variable types ────────────────────────────────────────────────────────
+    pos = expectTag(bytes, pos, '<variable_types>');
+    const types = [];
+    for (let i = 0; i < K; i++) {
+        types.push(view.getUint16(pos, le)); pos += 2;
+    }
+    pos = expectTag(bytes, pos, '</variable_types>');
+
+    // ── Variable names ────────────────────────────────────────────────────────
+    pos = expectTag(bytes, pos, '<varnames>');
+    const varnames = [];
+    for (let i = 0; i < K; i++) {
+        varnames.push(readNullStr(bytes, pos, 129)); pos += 129;
+    }
+    pos = expectTag(bytes, pos, '</varnames>');
+
+    // ── Sort list (not needed for reading) ────────────────────────────────────
+    pos = expectTag(bytes, pos, '<sortlist>');
+    pos += (K + 1) * 2;
+    pos = expectTag(bytes, pos, '</sortlist>');
+
+    // ── Display formats ───────────────────────────────────────────────────────
+    pos = expectTag(bytes, pos, '<formats>');
+    const formats = [];
+    for (let i = 0; i < K; i++) {
+        formats.push(readNullStr(bytes, pos, 57)); pos += 57;
+    }
+    pos = expectTag(bytes, pos, '</formats>');
+
+    // ── Value label names (one per variable, empty string if none) ─────────────
+    pos = expectTag(bytes, pos, '<value_label_names>');
+    const vlNames = [];
+    for (let i = 0; i < K; i++) {
+        vlNames.push(readNullStr(bytes, pos, 129)); pos += 129;
+    }
+    pos = expectTag(bytes, pos, '</value_label_names>');
+
+    // ── Variable labels ───────────────────────────────────────────────────────
+    pos = expectTag(bytes, pos, '<variable_labels>');
+    const varlabels = [];
+    for (let i = 0; i < K; i++) {
+        varlabels.push(readNullStr(bytes, pos, 321)); pos += 321;
+    }
+    pos = expectTag(bytes, pos, '</variable_labels>');
+
+    // ── Characteristics (skip using length fields to avoid false tag matches) ──
+    pos = expectTag(bytes, pos, '<characteristics>');
+    while (!peekTag(bytes, pos, '</characteristics>')) {
+        pos = expectTag(bytes, pos, '<ch>');
+        const chLen = view.getUint32(pos, le); pos += 4;
+        pos += chLen;
+        pos = expectTag(bytes, pos, '</ch>');
+    }
+    pos = expectTag(bytes, pos, '</characteristics>');
+
+    // ── Data ──────────────────────────────────────────────────────────────────
+    pos = expectTag(bytes, pos, '<data>');
+
+    const widths = types.map(t => {
+        if (t <= 2045)         return t; // strN: exactly t bytes
+        if (t === TYPE_STRL)   return 8; // 2-byte v + 6-byte o
+        if (t === TYPE_DOUBLE) return 8;
+        if (t === TYPE_FLOAT)  return 4;
+        if (t === TYPE_LONG)   return 4;
+        if (t === TYPE_INT)    return 2;
+        if (t === TYPE_BYTE)   return 1;
+        throw new Error(`Unknown Stata variable type ${t}`);
+    });
+
+    // rawData[j][i] = JS number | string | [v, o] (strL ref) | null (missing)
+    const rawData = [];
+    for (let j = 0; j < N; j++) {
+        const obs = [];
+        for (let i = 0; i < K; i++) {
+            const t = types[i];
+            let val;
+            if (t === TYPE_BYTE) {
+                val = view.getInt8(pos);
+                if (val > MISSING_BYTE) val = null;
+            } else if (t === TYPE_INT) {
+                val = view.getInt16(pos, le);
+                if (val > MISSING_INT) val = null;
+            } else if (t === TYPE_LONG) {
+                val = view.getInt32(pos, le);
+                if (val > MISSING_LONG) val = null;
+            } else if (t === TYPE_FLOAT) {
+                val = isMissingFloat(view, pos, le) ? null : view.getFloat32(pos, le);
+            } else if (t === TYPE_DOUBLE) {
+                val = isMissingDouble(view, pos, le) ? null : view.getFloat64(pos, le);
+            } else if (t === TYPE_STRL) {
+                const v = view.getUint16(pos, le);
+                const o = readUint48(view, pos + 2, le);
+                val = [v, o];
+            } else {
+                // strN: stop at first null byte, leave trailing spaces intact
+                const raw = bytes.subarray(pos, pos + t);
+                const nullIdx = raw.indexOf(0);
+                val = new TextDecoder('utf-8').decode(nullIdx >= 0 ? raw.subarray(0, nullIdx) : raw);
+            }
+            obs.push(val);
+            pos += widths[i];
+        }
+        rawData.push(obs);
+    }
+    pos = expectTag(bytes, pos, '</data>');
+
+    // ── StrLs ─────────────────────────────────────────────────────────────────
+    pos = expectTag(bytes, pos, '<strls>');
+    const strlMap = new Map(); // "v,o" → string content
+    while (!peekTag(bytes, pos, '</strls>')) {
+        pos = expectTag(bytes, pos, 'GSO');
+        const gsoV = view.getUint32(pos, le); pos += 4;
+        const gsoO = readUint64(view, pos, le); pos += 8;
+        const t    = bytes[pos]; pos += 1;
+        const len  = view.getUint32(pos, le); pos += 4;
+        const content = bytes.subarray(pos, pos + len); pos += len;
+        // t=130: UTF-8 with trailing \0; t=129: binary blob
+        const str = t === 130
+            ? new TextDecoder('utf-8').decode(content.subarray(0, len - 1))
+            : new TextDecoder('latin1').decode(content);
+        strlMap.set(`${gsoV},${gsoO}`, str);
+    }
+    pos = expectTag(bytes, pos, '</strls>');
+
+    // ── Value labels ──────────────────────────────────────────────────────────
+    pos = expectTag(bytes, pos, '<value_labels>');
+    const labelDefs = new Map(); // labname → { val_str → label_str }
+    while (!peekTag(bytes, pos, '</value_labels>')) {
+        pos = expectTag(bytes, pos, '<lbl>');
+        const tblLen  = view.getInt32(pos, le); pos += 4;
+        const labname = readNullStr(bytes, pos, 129); pos += 129;
+        pos += 3; // padding
+        const tblStart = pos;
+
+        const n      = view.getInt32(pos, le); pos += 4;
+        const txtlen = view.getInt32(pos, le); pos += 4;
+        const offs = [];
+        for (let i = 0; i < n; i++) { offs.push(view.getInt32(pos, le)); pos += 4; }
+        const vals = [];
+        for (let i = 0; i < n; i++) { vals.push(view.getInt32(pos, le)); pos += 4; }
+
+        const txtBase = tblStart + 8 + 8 * n; // start of txt[] array
+        const map = {};
+        for (let i = 0; i < n; i++) {
+            const lbl = readNullStr(bytes, txtBase + offs[i], txtlen - offs[i]);
+            map[String(vals[i])] = lbl;
+        }
+        labelDefs.set(labname, map);
+
+        pos = tblStart + tblLen;
+        pos = expectTag(bytes, pos, '</lbl>');
+    }
+    pos = expectTag(bytes, pos, '</value_labels>');
+
+    // ── Assemble rows ─────────────────────────────────────────────────────────
+    const header = [...varnames];
+    const rows   = [header];
+    for (let j = 0; j < N; j++) {
+        const row = rawData[j].map((raw, i) => {
+            if (raw === null)
+                return '';
+            if (Array.isArray(raw)) {
+                const [v, o] = raw;
+                if (v === 0 && o === 0) return '';
+                return strlMap.get(`${v},${o}`) ?? '';
+            }
+            if (typeof raw === 'string')
+                return raw;
+            // Numeric: apply date conversion or stringify
+            const fmt = formats[i];
+            if (isDateFmt(fmt))
+                return new Date((raw - STATA_DAY_OFFSET) * 86400000).toISOString().slice(0, 10);
+            if (isDatetimeFmt(fmt))
+                return new Date(raw - STATA_MS_OFFSET).toISOString().slice(0, 19);
+            return String(raw);
+        });
+        rows.push(row);
+    }
+
+    // ── Column metadata ───────────────────────────────────────────────────────
+    const columnMeta = varnames.map((_, i) => {
+        const meta = {};
+        if (varlabels[i]) meta.label = varlabels[i];
+        const vlName = vlNames[i];
+        if (vlName) {
+            const vl = labelDefs.get(vlName);
+            if (vl) meta.valueLabels = vl;
+        }
+        return Object.keys(meta).length > 0 ? meta : null;
+    });
+
+    const name = filename.replace(/\.[^.]+$/, '');
+    return [{ name, rows, columnMeta }];
+}
