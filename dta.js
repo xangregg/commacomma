@@ -110,17 +110,16 @@ function parseLegacyDtaFile(bytes, view, filename) {
     // pos == 109
 
     // Field widths vary by format version
-    const typeWidth = release >= 114 ? 2 : 1;
     const nameWidth = release >= 110 ? 33 : 9;
-    const fmtWidth  = release >= 105 ? 12 : 7;
+    const fmtWidth  = release >= 115 ? 49 : release >= 105 ? 12 : 7;
     const lblWidth  = release >= 110 ? 33 : 9;
     const vlblWidth = 81;
 
     // ── Type list ─────────────────────────────────────────────────────────────
     const types = [];
     for (let i = 0; i < K; i++) {
-        types.push(typeWidth === 2 ? view.getUint16(pos, le) : bytes[pos]);
-        pos += typeWidth;
+        types.push(bytes[pos]);
+        pos += 1;
     }
 
     // ── Variable names ────────────────────────────────────────────────────────
@@ -168,26 +167,26 @@ function parseLegacyDtaFile(bytes, view, filename) {
     }
 
     // ── Field widths for data ─────────────────────────────────────────────────
+    // Two byte-code schemes coexist in pre-117 files:
+    //   Numeric codes: 255=double  254=float  253=long  252=int  251=byte  1–244=strN
+    //   ASCII codes:   100='d'     102='f'    108='l'   105='i'   98='b'
     const widths = types.map(t => {
-        if (typeWidth === 1) {
-            if (t === 255 || t === 100) return 8; // double  ('d')
-            if (t === 254 || t === 102) return 4; // float   ('f')
-            if (t === 253 || t === 108) return 4; // long    ('l')
-            if (t === 252 || t === 105) return 2; // int     ('i')
-            if (t === 251 || t ===  98) return 1; // byte    ('b')
-            if (t >= 1 && t <= 244)     return t; // strN
-            throw new Error(`Unknown Stata type code ${t}`);
-        } else {
-            // Same uint16 codes as format 117+, but no strL
-            if (t === TYPE_DOUBLE) return 8;
-            if (t === TYPE_FLOAT)  return 4;
-            if (t === TYPE_LONG)   return 4;
-            if (t === TYPE_INT)    return 2;
-            if (t === TYPE_BYTE)   return 1;
-            if (t >= 1 && t <= 2045) return t; // strN
-            throw new Error(`Unknown Stata type code ${t}`);
-        }
+        if (t === 255 || t === 100) return 8; // double  ('d')
+        if (t === 254 || t === 102) return 4; // float   ('f')
+        if (t === 253 || t === 108) return 4; // long    ('l')
+        if (t === 252 || t === 105) return 2; // int     ('i')
+        if (t === 251 || t ===  98) return 1; // byte    ('b')
+        if (t >= 1 && t <= 244)     return t; // strN (standard: type code = byte width)
+        throw new Error(`Unknown Stata type code ${t}`);
     });
+
+    // Some old files encode string width as (type_code & 0x7F)+1 for codes ≥ 128,
+    // rather than type_code directly.  Fall back to that formula if the standard
+    // row width would overflow the remaining file bytes.
+    if (widths.reduce((s, w) => s + w, 0) * N > bytes.length - pos)
+        for (let i = 0; i < K; i++)
+            if (types[i] >= 128 && types[i] <= 244)
+                widths[i] = (types[i] & 0x7F) + 1;
 
     // ── Data ──────────────────────────────────────────────────────────────────
     const rawData = [];
@@ -196,44 +195,23 @@ function parseLegacyDtaFile(bytes, view, filename) {
         for (let i = 0; i < K; i++) {
             const t = types[i];
             let val;
-            if (typeWidth === 1) {
-                if (t === 251 || t === 98) {
-                    val = view.getInt8(pos);
-                    if (val > MISSING_BYTE) val = null;
-                } else if (t === 252 || t === 105) {
-                    val = view.getInt16(pos, le);
-                    if (val > MISSING_INT) val = null;
-                } else if (t === 253 || t === 108) {
-                    val = view.getInt32(pos, le);
-                    if (val > MISSING_LONG) val = null;
-                } else if (t === 254 || t === 102) {
-                    val = isMissingFloat(view, pos, le) ? null : view.getFloat32(pos, le);
-                } else if (t === 255 || t === 100) {
-                    val = isMissingDouble(view, pos, le) ? null : view.getFloat64(pos, le);
-                } else {
-                    const raw = bytes.subarray(pos, pos + t);
-                    const nullIdx = raw.indexOf(0);
-                    val = new TextDecoder('utf-8').decode(nullIdx >= 0 ? raw.subarray(0, nullIdx) : raw);
-                }
+            if (t === 251 || t === 98) {
+                val = view.getInt8(pos);
+                if (val > MISSING_BYTE) val = null;
+            } else if (t === 252 || t === 105) {
+                val = view.getInt16(pos, le);
+                if (val > MISSING_INT) val = null;
+            } else if (t === 253 || t === 108) {
+                val = view.getInt32(pos, le);
+                if (val > MISSING_LONG) val = null;
+            } else if (t === 254 || t === 102) {
+                val = isMissingFloat(view, pos, le) ? null : view.getFloat32(pos, le);
+            } else if (t === 255 || t === 100) {
+                val = isMissingDouble(view, pos, le) ? null : view.getFloat64(pos, le);
             } else {
-                if (t === TYPE_BYTE) {
-                    val = view.getInt8(pos);
-                    if (val > MISSING_BYTE) val = null;
-                } else if (t === TYPE_INT) {
-                    val = view.getInt16(pos, le);
-                    if (val > MISSING_INT) val = null;
-                } else if (t === TYPE_LONG) {
-                    val = view.getInt32(pos, le);
-                    if (val > MISSING_LONG) val = null;
-                } else if (t === TYPE_FLOAT) {
-                    val = isMissingFloat(view, pos, le) ? null : view.getFloat32(pos, le);
-                } else if (t === TYPE_DOUBLE) {
-                    val = isMissingDouble(view, pos, le) ? null : view.getFloat64(pos, le);
-                } else {
-                    const raw = bytes.subarray(pos, pos + t);
-                    const nullIdx = raw.indexOf(0);
-                    val = new TextDecoder('utf-8').decode(nullIdx >= 0 ? raw.subarray(0, nullIdx) : raw);
-                }
+                const raw = bytes.subarray(pos, pos + widths[i]);
+                const nullIdx = raw.indexOf(0);
+                val = new TextDecoder('utf-8').decode(nullIdx >= 0 ? raw.subarray(0, nullIdx) : raw);
             }
             obs.push(val);
             pos += widths[i];
