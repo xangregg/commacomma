@@ -337,6 +337,7 @@
         }
 
         #valueLabelsButtons,
+        #jsonNestingButtons,
         #inputButtons,
         #outputButtons {
             width: fit-content;
@@ -344,6 +345,7 @@
         }
 
         #valueLabelsButtons .format-btn,
+        #jsonNestingButtons .format-btn,
         #inputButtons .format-btn,
         #outputButtons .format-btn {
             flex: none;
@@ -353,6 +355,7 @@
         }
 
         #valueLabelsButtons .format-btn:first-child,
+        #jsonNestingButtons .format-btn:first-child,
         #inputButtons .format-btn:first-child,
         #outputButtons .format-btn:first-child {
             border-radius: 8px 0 0 8px;
@@ -360,12 +363,14 @@
         }
 
         #valueLabelsButtons .format-btn:last-child,
+        #jsonNestingButtons .format-btn:last-child,
         #inputButtons .format-btn:last-child,
         #outputButtons .format-btn:last-child {
             border-radius: 0 8px 8px 0;
         }
 
         #valueLabelsButtons .format-btn.selected,
+        #jsonNestingButtons .format-btn.selected,
         #inputButtons .format-btn.selected,
         #outputButtons .format-btn.selected {
             z-index: 1;
@@ -455,10 +460,10 @@
                 <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
             <div class="upload-text">Drop a file here or click to browse</div>
-            <div class="upload-hint">CSV &nbsp;·&nbsp; TSV &nbsp;·&nbsp; SSV &nbsp;·&nbsp; TXT &nbsp;·&nbsp; DAT &nbsp;·&nbsp; RDS &nbsp;·&nbsp; RData &nbsp;·&nbsp; SAV &nbsp;·&nbsp; DTA</div>
+            <div class="upload-hint">CSV &nbsp;·&nbsp; TSV &nbsp;·&nbsp; SSV &nbsp;·&nbsp; TXT &nbsp;·&nbsp; DAT &nbsp;·&nbsp; RDS &nbsp;·&nbsp; RData &nbsp;·&nbsp; SAV &nbsp;·&nbsp; DTA &nbsp;·&nbsp; JSON &nbsp;·&nbsp; NDJSON</div>
         </div>
 
-        <input type="file" id="fileInput" accept=".csv,.tsv,.ssv,.tab,.txt,.dat,.rds,.rdata,.rda,.sav,.dta">
+        <input type="file" id="fileInput" accept=".csv,.tsv,.ssv,.tab,.txt,.dat,.rds,.rdata,.rda,.sav,.dta,.json,.jsonl,.ndjson">
 
         <div class="error" id="error"></div>
 
@@ -489,6 +494,15 @@
                         <input type="text" id="combineStr" value=" " disabled>
                     </label>
                 </div>
+            </div>
+        </div>
+
+        <div class="option-group" id="jsonNestingOption" style="display:none;margin-top:1.5rem">
+            <div class="option-label">Nested objects</div>
+            <div class="format-buttons" id="jsonNestingButtons">
+                <button type="button" class="format-btn selected" data-mode="stringify">Stringify</button>
+                <button type="button" class="format-btn" data-mode="flatten">Flatten</button>
+                <button type="button" class="format-btn" data-mode="leaf">Leaf</button>
             </div>
         </div>
 

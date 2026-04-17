@@ -3,6 +3,7 @@ import { parseDelimited, serializeDelimited } from './parser.js';
 import { parseRFile } from './rds.js';
 import { parseSavFile } from './spss.js';
 import { parseDtaFile } from './dta.js';
+import { parseJsonFile } from './json.js';
 import { generateCsvw } from './csvw.js';
 
 const MAX_PREVIEW_ROWS = 100;
@@ -14,6 +15,7 @@ let inputFormatId  = 'csv';
 let outputFormatId = 'tsv';
 let rTables       = null; // [{name, rows}] extracted from an R file
 let rTableIndex   = 0;
+let jsonSource    = null; // { name, text } when a JSON/NDJSON file is loaded
 
 function getFormat(id) {
     return FORMATS.find(f => f.id === id);
@@ -170,6 +172,16 @@ function renderPreview(rows, headerLines) {
     setOutputVisible(true);
 }
 
+function getJsonNestingMode() {
+    return document.querySelector('#jsonNestingButtons .format-btn.selected')?.dataset.mode ?? 'stringify';
+}
+
+function setJsonNestingMode(mode) {
+    document.querySelectorAll('#jsonNestingButtons .format-btn').forEach(btn =>
+        btn.classList.toggle('selected', btn.dataset.mode === mode)
+    );
+}
+
 function getLabelsMode() {
     return document.querySelector('#valueLabelsButtons .format-btn.selected')?.dataset.mode ?? 'metadata';
 }
@@ -217,7 +229,9 @@ function getActiveColumnMeta() {
 
 function isBinaryExtension(filename) {
     const ext = filename.split('.').pop().toLowerCase();
-    return ext === 'rds' || ext === 'rdata' || ext === 'rda' || ext === 'sav' || ext === 'dta';
+    return ext === 'rds' || ext === 'rdata' || ext === 'rda'
+        || ext === 'sav' || ext === 'dta'
+        || ext === 'json' || ext === 'jsonl' || ext === 'ndjson';
 }
 
 async function loadFile(file) {
@@ -233,8 +247,11 @@ async function loadFile(file) {
     currentFile = null;
     rTables = null;
     rTableIndex = 0;
+    jsonSource = null;
     setLabelsMode('metadata');
     document.getElementById('valueLabelsOption').style.display = 'none';
+    setJsonNestingMode('stringify');
+    document.getElementById('jsonNestingOption').style.display = 'none';
 
     setOutputVisible(false);
     document.getElementById('inputOptions').style.display   = 'none';
@@ -273,11 +290,21 @@ async function loadTextData(file) {
 }
 
 async function loadBinaryData(file) {
-    const ext    = file.name.split('.').pop().toLowerCase();
-    const buffer = await file.arrayBuffer();
-    rTables = ext === 'sav' ? await parseSavFile(buffer, file.name)
-           : ext === 'dta' ? await parseDtaFile(buffer, file.name)
-           : await parseRFile(buffer, file.name);
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'json' || ext === 'jsonl' || ext === 'ndjson') {
+        const text = await file.text();
+        jsonSource = { name: file.name, text };
+        setJsonNestingMode('stringify');
+        document.getElementById('jsonNestingOption').style.display = 'block';
+        rTables = parseJsonFile(text, file.name, 'stringify');
+    } else {
+        jsonSource = null;
+        document.getElementById('jsonNestingOption').style.display = 'none';
+        const buffer = await file.arrayBuffer();
+        rTables = ext === 'sav' ? await parseSavFile(buffer, file.name)
+               : ext === 'dta' ? await parseDtaFile(buffer, file.name)
+               : await parseRFile(buffer, file.name);
+    }
 
     if (rTables.length === 0) {
         showError('No data tables found in R file.');
@@ -449,6 +476,14 @@ document.getElementById('valueLabelsButtons').addEventListener('click', e => {
 document.getElementById('valueLabelsCombineStr').addEventListener('input', () => {
     if (rTables && getLabelsMode() === 'combine')
         renderPreview(getActiveRows(), 1);
+});
+document.getElementById('jsonNestingButtons').addEventListener('click', e => {
+    const btn = e.target.closest('.format-btn');
+    if (!btn || !jsonSource) return;
+    const mode = btn.dataset.mode;
+    setJsonNestingMode(mode);
+    rTables = parseJsonFile(jsonSource.text, jsonSource.name, mode);
+    selectRTable(0);
 });
 document.getElementById('commentLines').addEventListener('input', reparse);
 document.getElementById('headerLines').addEventListener('input', reparse);

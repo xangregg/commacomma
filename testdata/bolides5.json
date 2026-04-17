@@ -1,0 +1,503 @@
+{"success": true,
+    "data": [
+        {
+            "_id": "62995685ac701d227935ccb2",
+            "brightness": {
+                "GLM-17": {
+                    "category": "Fairly Bright",
+                    "value": 1.358355367514171e-14
+                }
+            },
+            "description": "",
+            "detectedBy": "GLM-17",
+            "groundTrack": {
+                "GLM-17": {
+                    "category": "Multi-Pixel",
+                    "value": 19.226631156700705
+                }
+            },
+            "howFound": {
+                "GLM-17": [
+                    "forest"
+                ]
+            },
+            "otherDetectingSources": "",
+            "confidenceRating": "low",
+            "otherInformation": "",
+            "lightcurveStructure": "good",
+            "nearbyLightningActivity": "isolated",
+            "status": "PUBLISHED",
+            "datetime": "2022-05-16T17:56:01.000Z",
+            "attachments": [
+                {
+                    "location": {
+                        "coordinates": [
+                            178.5537872314453,
+                            38.74403381347656
+                        ],
+                        "type": "Point"
+                    },
+                    "_id": "6299565aac701d227935cb7a",
+                    "netCdfFilename": "6299565aac701d227935cb7a_OR_GLM-L2-LCFA_G17_s20221361756000_e20221361756200_c20221361756208.nc",
+                    "title": "GLM L2 Lightning Detections: Events, Groups, and Flashes",
+                    "startTime": "2022-05-16T17:56:01.936Z",
+                    "endTime": "2022-05-16T17:56:02.227Z",
+                    "duration": 0.291,
+                    "energy": 6.484405842617292e-15,
+                    "platformId": "G17",
+                    "satellite": {
+                        "height": 35786.0234,
+                        "latitude": 0,
+                        "longitude": -137.199997
+                    },
+                    "createdAt": "2022-06-03T00:32:09.040Z",
+                    "updatedAt": "2022-06-03T00:32:09.040Z"
+                }
+            ],
+            "name": "",
+            "duration": 20,
+            "latitude": 38.8,
+            "longitude": 178.6,
+            "latitudeDelta": 1,
+            "longitudeDelta": 1,
+            "beginningAltitude": null,
+            "lastModifiedBy": "jdotson",
+            "lastModifiedDate": "2022-06-03T19:37:18.009Z",
+            "enteredBy": "rlongenb",
+            "enteredDate": "2022-06-03T00:32:05.807Z",
+            "createdAt": "2022-06-03T00:32:09.040Z",
+            "updatedAt": "2022-06-03T19:37:18.127Z",
+            "__v": 0,
+            "submittedBy": "rlongenb",
+            "submittedDate": "2022-06-03T00:32:13.915Z",
+            "publishedBy": "jdotson",
+            "publishedDate": "2022-06-03T19:37:18.009Z",
+            "images": [
+                {
+                    "name": "Map",
+                    "url": "/img/6299565aac701d227935cb7a_OR_GLM-L2-LCFA_G17_s20221361756000_e20221361756200_c20221361756208.nc_Map.png"
+                },
+                {
+                    "name": "Energy Chart",
+                    "url": "/img/6299565aac701d227935cb7a_OR_GLM-L2-LCFA_G17_s20221361756000_e20221361756200_c20221361756208.nc_EChart.png"
+                },
+                {
+                    "name": "Trajectory Chart",
+                    "url": "/img/6299565aac701d227935cb7a_OR_GLM-L2-LCFA_G17_s20221361756000_e20221361756200_c20221361756208.nc_TChart.png"
+                }
+            ],
+            "csv": [
+                "/csv/6299565aac701d227935cb7a_OR_GLM-L2-LCFA_G17_s20221361756000_e20221361756200_c20221361756208.nc.csv"
+            ],
+            "platform": "GLM-17"
+        },
+        {
+            "_id": "62995616ac701d227935c352",
+            "brightness": {
+                "GLM-16": {
+                    "category": "Faint",
+                    "value": 3.0848139228168667e-15
+                }
+            },
+            "description": "",
+            "detectedBy": "GLM-16",
+            "groundTrack": {
+                "GLM-16": {
+                    "category": "Single-Pixel",
+                    "value": 0.0025362605670633306
+                }
+            },
+            "howFound": {
+                "GLM-16": [
+                    "forest"
+                ]
+            },
+            "otherDetectingSources": "",
+            "confidenceRating": "low",
+            "otherInformation": "",
+            "lightcurveStructure": "good",
+            "nearbyLightningActivity": "isolated",
+            "status": "PUBLISHED",
+            "datetime": "2022-05-16T11:11:12.000Z",
+            "attachments": [
+                {
+                    "location": {
+                        "coordinates": [
+                            -77.85324096679688,
+                            -6.605750560760498
+                        ],
+                        "type": "Point"
+                    },
+                    "_id": "62995601ac701d227935bb6a",
+                    "netCdfFilename": "62995601ac701d227935bb6a_OR_GLM-L2-LCFA_G16_s20221361111000_e20221361111200_c20221361111227.nc",
+                    "title": "GLM L2 Lightning Detections: Events, Groups, and Flashes",
+                    "startTime": "2022-05-16T11:11:12.418Z",
+                    "endTime": "2022-05-16T11:11:12.478Z",
+                    "duration": 0.06,
+                    "energy": 1.185041967634276e-15,
+                    "platformId": "G16",
+                    "satellite": {
+                        "height": 35786.0234,
+                        "latitude": 0,
+                        "longitude": -75.1999969
+                    },
+                    "createdAt": "2022-06-03T00:30:18.809Z",
+                    "updatedAt": "2022-06-03T00:30:18.809Z"
+                }
+            ],
+            "name": "",
+            "duration": 20,
+            "latitude": -6.6,
+            "longitude": -77.9,
+            "latitudeDelta": 1,
+            "longitudeDelta": 1,
+            "beginningAltitude": null,
+            "lastModifiedBy": "jdotson",
+            "lastModifiedDate": "2022-06-03T19:37:26.979Z",
+            "enteredBy": "rlongenb",
+            "enteredDate": "2022-06-03T00:30:14.267Z",
+            "createdAt": "2022-06-03T00:30:18.809Z",
+            "updatedAt": "2022-06-03T19:37:27.046Z",
+            "__v": 0,
+            "submittedBy": "rlongenb",
+            "submittedDate": "2022-06-03T00:30:28.920Z",
+            "publishedBy": "jdotson",
+            "publishedDate": "2022-06-03T19:37:26.979Z",
+            "images": [
+                {
+                    "name": "Map",
+                    "url": "/img/62995601ac701d227935bb6a_OR_GLM-L2-LCFA_G16_s20221361111000_e20221361111200_c20221361111227.nc_Map.png"
+                },
+                {
+                    "name": "Energy Chart",
+                    "url": "/img/62995601ac701d227935bb6a_OR_GLM-L2-LCFA_G16_s20221361111000_e20221361111200_c20221361111227.nc_EChart.png"
+                },
+                {
+                    "name": "Trajectory Chart",
+                    "url": "/img/62995601ac701d227935bb6a_OR_GLM-L2-LCFA_G16_s20221361111000_e20221361111200_c20221361111227.nc_TChart.png"
+                }
+            ],
+            "csv": [
+                "/csv/62995601ac701d227935bb6a_OR_GLM-L2-LCFA_G16_s20221361111000_e20221361111200_c20221361111227.nc.csv"
+            ],
+            "platform": "GLM-16"
+        },
+        {
+            "_id": "629955d1ac701d227935af63",
+            "brightness": {
+                "GLM-16": {
+                    "category": "Faint",
+                    "value": 6.284429847334914e-15
+                }
+            },
+            "description": "",
+            "detectedBy": "GLM-16",
+            "groundTrack": {
+                "GLM-16": {
+                    "category": "Single-Pixel",
+                    "value": 0.011160090536336726
+                }
+            },
+            "howFound": {
+                "GLM-16": [
+                    "forest"
+                ]
+            },
+            "otherDetectingSources": "",
+            "confidenceRating": "low",
+            "otherInformation": "",
+            "lightcurveStructure": "good",
+            "nearbyLightningActivity": "isolated",
+            "status": "PUBLISHED",
+            "datetime": "2022-05-16T10:29:22.000Z",
+            "attachments": [
+                {
+                    "location": {
+                        "coordinates": [
+                            -51.32033157348633,
+                            25.426578521728516
+                        ],
+                        "type": "Point"
+                    },
+                    "_id": "629955beac701d227935a3c0",
+                    "netCdfFilename": "629955beac701d227935a3c0_OR_GLM-L2-LCFA_G16_s20221361029200_e20221361029400_c20221361029424.nc",
+                    "title": "GLM L2 Lightning Detections: Events, Groups, and Flashes",
+                    "startTime": "2022-05-16T10:29:22.936Z",
+                    "endTime": "2022-05-16T10:29:23.032Z",
+                    "duration": 0.096,
+                    "energy": 2.484885936969733e-15,
+                    "platformId": "G16",
+                    "satellite": {
+                        "height": 35786.0234,
+                        "latitude": 0,
+                        "longitude": -75.1999969
+                    },
+                    "createdAt": "2022-06-03T00:29:11.340Z",
+                    "updatedAt": "2022-06-03T00:29:11.340Z"
+                }
+            ],
+            "name": "",
+            "duration": 20,
+            "latitude": 25.4,
+            "longitude": -51.3,
+            "latitudeDelta": 1,
+            "longitudeDelta": 1,
+            "beginningAltitude": null,
+            "lastModifiedBy": "jdotson",
+            "lastModifiedDate": "2022-06-03T19:37:36.236Z",
+            "enteredBy": "rlongenb",
+            "enteredDate": "2022-06-03T00:29:05.529Z",
+            "createdAt": "2022-06-03T00:29:11.341Z",
+            "updatedAt": "2022-06-03T19:37:36.354Z",
+            "__v": 0,
+            "submittedBy": "rlongenb",
+            "submittedDate": "2022-06-03T00:29:16.570Z",
+            "publishedBy": "jdotson",
+            "publishedDate": "2022-06-03T19:37:36.236Z",
+            "images": [
+                {
+                    "name": "Map",
+                    "url": "/img/629955beac701d227935a3c0_OR_GLM-L2-LCFA_G16_s20221361029200_e20221361029400_c20221361029424.nc_Map.png"
+                },
+                {
+                    "name": "Energy Chart",
+                    "url": "/img/629955beac701d227935a3c0_OR_GLM-L2-LCFA_G16_s20221361029200_e20221361029400_c20221361029424.nc_EChart.png"
+                },
+                {
+                    "name": "Trajectory Chart",
+                    "url": "/img/629955beac701d227935a3c0_OR_GLM-L2-LCFA_G16_s20221361029200_e20221361029400_c20221361029424.nc_TChart.png"
+                }
+            ],
+            "csv": [
+                "/csv/629955beac701d227935a3c0_OR_GLM-L2-LCFA_G16_s20221361029200_e20221361029400_c20221361029424.nc.csv"
+            ],
+            "platform": "GLM-16"
+        },
+        {
+            "_id": "62995566ac701d2279359500",
+            "brightness": {
+                "GLM-16": {
+                    "category": "Faint",
+                    "value": 2.184921944046166e-15
+                }
+            },
+            "description": "",
+            "detectedBy": "GLM-16",
+            "groundTrack": {
+                "GLM-16": {
+                    "category": "Multi-Pixel",
+                    "value": 8.831673659410136
+                }
+            },
+            "howFound": {
+                "GLM-16": [
+                    "forest"
+                ]
+            },
+            "otherDetectingSources": "",
+            "confidenceRating": "low",
+            "otherInformation": "",
+            "lightcurveStructure": "minimal",
+            "nearbyLightningActivity": "isolated",
+            "status": "PUBLISHED",
+            "datetime": "2022-05-16T07:16:08.000Z",
+            "attachments": [
+                {
+                    "location": {
+                        "coordinates": [
+                            -60.38932800292969,
+                            -29.406465530395508
+                        ],
+                        "type": "Point"
+                    },
+                    "_id": "62995549ac701d227935867b",
+                    "netCdfFilename": "62995549ac701d227935867b_OR_GLM-L2-LCFA_G16_s20221360716000_e20221360716200_c20221360716226.nc",
+                    "title": "GLM L2 Lightning Detections: Events, Groups, and Flashes",
+                    "startTime": "2022-05-16T07:16:08.758Z",
+                    "endTime": "2022-05-16T07:16:08.816Z",
+                    "duration": 0.058,
+                    "energy": 1.385017962916654e-15,
+                    "platformId": "G16",
+                    "satellite": {
+                        "height": 35786.0234,
+                        "latitude": 0,
+                        "longitude": -75.1999969
+                    },
+                    "createdAt": "2022-06-03T00:27:30.929Z",
+                    "updatedAt": "2022-06-03T00:27:30.929Z"
+                }
+            ],
+            "name": "",
+            "duration": 20,
+            "latitude": -29.3,
+            "longitude": -60.4,
+            "latitudeDelta": 1,
+            "longitudeDelta": 1,
+            "beginningAltitude": null,
+            "lastModifiedBy": "jdotson",
+            "lastModifiedDate": "2022-06-03T19:37:46.657Z",
+            "enteredBy": "rlongenb",
+            "enteredDate": "2022-06-03T00:27:18.413Z",
+            "createdAt": "2022-06-03T00:27:30.938Z",
+            "updatedAt": "2022-06-03T19:37:46.757Z",
+            "__v": 0,
+            "submittedBy": "rlongenb",
+            "submittedDate": "2022-06-03T00:27:35.705Z",
+            "publishedBy": "jdotson",
+            "publishedDate": "2022-06-03T19:37:46.657Z",
+            "images": [
+                {
+                    "name": "Map",
+                    "url": "/img/62995549ac701d227935867b_OR_GLM-L2-LCFA_G16_s20221360716000_e20221360716200_c20221360716226.nc_Map.png"
+                },
+                {
+                    "name": "Energy Chart",
+                    "url": "/img/62995549ac701d227935867b_OR_GLM-L2-LCFA_G16_s20221360716000_e20221360716200_c20221360716226.nc_EChart.png"
+                },
+                {
+                    "name": "Trajectory Chart",
+                    "url": "/img/62995549ac701d227935867b_OR_GLM-L2-LCFA_G16_s20221360716000_e20221360716200_c20221360716226.nc_TChart.png"
+                }
+            ],
+            "csv": [
+                "/csv/62995549ac701d227935867b_OR_GLM-L2-LCFA_G16_s20221360716000_e20221360716200_c20221360716226.nc.csv"
+            ],
+            "platform": "GLM-16"
+        },
+        {
+            "_id": "6299452eac701d2279354e6a",
+            "brightness": {
+                "GLM-16": {
+                    "category": "Fairly Bright",
+                    "value": 3.438105718450902e-14
+                },
+                "GLM-17": {
+                    "category": "Fairly Bright",
+                    "value": 2.1082653498230884e-14
+                }
+            },
+            "description": "",
+            "detectedBy": "GLM-16,GLM-17",
+            "groundTrack": {
+                "GLM-16": {
+                    "category": "Multi-Pixel",
+                    "value": 43.45929585527602
+                },
+                "GLM-17": {
+                    "category": "Multi-Pixel",
+                    "value": 9.143181994471473
+                }
+            },
+            "howFound": {
+                "GLM-16": [
+                    "forest"
+                ],
+                "GLM-17": [
+                    "forest"
+                ]
+            },
+            "otherDetectingSources": "",
+            "confidenceRating": "high",
+            "otherInformation": "",
+            "lightcurveStructure": "good",
+            "nearbyLightningActivity": "isolated",
+            "status": "PUBLISHED",
+            "datetime": "2022-05-15T20:41:41.000Z",
+            "attachments": [
+                {
+                    "location": {
+                        "coordinates": [
+                            -111.41185760498047,
+                            -20.91098403930664
+                        ],
+                        "type": "Point"
+                    },
+                    "_id": "629944e2ac701d2279353426",
+                    "netCdfFilename": "629944e2ac701d2279353426_OR_GLM-L2-LCFA_G16_s20221352041400_e20221352042000_c20221352042028.nc",
+                    "title": "GLM L2 Lightning Detections: Events, Groups, and Flashes",
+                    "startTime": "2022-05-15T20:41:41.149Z",
+                    "endTime": "2022-05-15T20:41:42.010Z",
+                    "duration": 0.861,
+                    "energy": 2.7848499298932998e-15,
+                    "platformId": "G16",
+                    "satellite": {
+                        "height": 35786.0234,
+                        "latitude": 0,
+                        "longitude": -75.1999969
+                    },
+                    "createdAt": "2022-06-02T23:18:19.231Z",
+                    "updatedAt": "2022-06-02T23:18:19.231Z"
+                },
+                {
+                    "location": {
+                        "coordinates": [
+                            -110.39916229248047,
+                            -20.9642391204834
+                        ],
+                        "type": "Point"
+                    },
+                    "_id": "62994502ac701d2279354b12",
+                    "netCdfFilename": "62994502ac701d2279354b12_OR_GLM-L2-LCFA_G17_s20221352041400_e20221352042000_c20221352042015.nc",
+                    "title": "GLM L2 Lightning Detections: Events, Groups, and Flashes",
+                    "startTime": "2022-05-15T20:41:41.737Z",
+                    "endTime": "2022-05-15T20:41:42.011Z",
+                    "duration": 0.274,
+                    "energy": 2.5848739346109218e-15,
+                    "platformId": "G17",
+                    "satellite": {
+                        "height": 35786.0234,
+                        "latitude": 0,
+                        "longitude": -137.199997
+                    },
+                    "createdAt": "2022-06-02T23:18:19.237Z",
+                    "updatedAt": "2022-06-02T23:18:19.237Z"
+                }
+            ],
+            "name": "",
+            "duration": 20,
+            "latitude": -20.9,
+            "longitude": -111,
+            "latitudeDelta": 1,
+            "longitudeDelta": 2,
+            "beginningAltitude": 70,
+            "lastModifiedBy": "jdotson",
+            "lastModifiedDate": "2022-06-03T19:38:00.640Z",
+            "enteredBy": "rlongenb",
+            "enteredDate": "2022-06-02T23:18:06.294Z",
+            "createdAt": "2022-06-02T23:18:19.237Z",
+            "updatedAt": "2022-06-03T19:38:01.275Z",
+            "__v": 0,
+            "submittedBy": "rlongenb",
+            "submittedDate": "2022-06-02T23:18:49.799Z",
+            "publishedBy": "jdotson",
+            "publishedDate": "2022-06-03T19:38:00.640Z",
+            "images": [
+                {
+                    "name": "Map",
+                    "url": "/img/629944e2ac701d2279353426_OR_GLM-L2-LCFA_G16_s20221352041400_e20221352042000_c20221352042028.nc_Map.png"
+                },
+                {
+                    "name": "Energy Chart",
+                    "url": "/img/629944e2ac701d2279353426_OR_GLM-L2-LCFA_G16_s20221352041400_e20221352042000_c20221352042028.nc_EChart.png"
+                },
+                {
+                    "name": "Energy Chart",
+                    "url": "/img/62994502ac701d2279354b12_OR_GLM-L2-LCFA_G17_s20221352041400_e20221352042000_c20221352042015.nc_EChart.png"
+                },
+                {
+                    "name": "Trajectory Chart",
+                    "url": "/img/629944e2ac701d2279353426_OR_GLM-L2-LCFA_G16_s20221352041400_e20221352042000_c20221352042028.nc_TChart.png"
+                },
+                {
+                    "name": "Trajectory Chart",
+                    "url": "/img/62994502ac701d2279354b12_OR_GLM-L2-LCFA_G17_s20221352041400_e20221352042000_c20221352042015.nc_TChart.png"
+                }
+            ],
+            "csv": [
+                "/csv/629944e2ac701d2279353426_OR_GLM-L2-LCFA_G16_s20221352041400_e20221352042000_c20221352042028.nc.csv",
+                "/csv/62994502ac701d2279354b12_OR_GLM-L2-LCFA_G17_s20221352041400_e20221352042000_c20221352042015.nc.csv"
+            ],
+            "platform": "GLM-16,GLM-17"
+        }
+    ]
+}
