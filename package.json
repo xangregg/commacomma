@@ -6,10 +6,11 @@
   "scripts": {
     "start": "npx --yes serve .",
     "test": "node --test",
-    "vendor": "cp node_modules/@jackemcpherson/rds-js/dist/index.js vendor/rds-js.js"
+    "vendor": "cp node_modules/@jackemcpherson/rds-js/dist/index.js vendor/rds-js.js && cp node_modules/hyparquet/src/*.js vendor/hyparquet/"
   },
   "private": true,
   "devDependencies": {
-    "@jackemcpherson/rds-js": "^0.2.0"
+    "@jackemcpherson/rds-js": "^0.2.0",
+    "hyparquet": "^1.25.6"
   }
 }

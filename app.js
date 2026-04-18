@@ -4,6 +4,7 @@ import { parseRFile } from './rds.js';
 import { parseSavFile } from './spss.js';
 import { parseDtaFile } from './dta.js';
 import { parseJsonFile } from './json.js';
+import { parseParquetFile } from './parquet.js';
 import { generateCsvw } from './csvw.js';
 
 const MAX_PREVIEW_ROWS = 100;
@@ -231,7 +232,8 @@ function isBinaryExtension(filename) {
     const ext = filename.split('.').pop().toLowerCase();
     return ext === 'rds' || ext === 'rdata' || ext === 'rda'
         || ext === 'sav' || ext === 'dta'
-        || ext === 'json' || ext === 'jsonl' || ext === 'ndjson';
+        || ext === 'json' || ext === 'jsonl' || ext === 'ndjson'
+        || ext === 'parquet';
 }
 
 async function loadFile(file) {
@@ -301,8 +303,9 @@ async function loadBinaryData(file) {
         jsonSource = null;
         document.getElementById('jsonNestingOption').style.display = 'none';
         const buffer = await file.arrayBuffer();
-        rTables = ext === 'sav' ? await parseSavFile(buffer, file.name)
-               : ext === 'dta' ? await parseDtaFile(buffer, file.name)
+        rTables = ext === 'sav'     ? await parseSavFile(buffer, file.name)
+               : ext === 'dta'     ? await parseDtaFile(buffer, file.name)
+               : ext === 'parquet' ? await parseParquetFile(buffer, file.name)
                : await parseRFile(buffer, file.name);
     }
 

@@ -22,11 +22,11 @@ export function generateCsvw(rows, csvFilename, columnMeta = null) {
     const dataRows = rows.slice(1);
     const columns  = headers.map((title, i) => {
         const values   = dataRows.map(r => r[i] ?? '');
-        const datatype = inferColumnType(values);
+        const meta     = columnMeta?.[i];
+        const datatype = meta?.datatype ?? inferColumnType(values);
         const name     = (title.replace(/[^A-Za-z0-9_]/g, '_') || `col${i + 1}`)
                              .replace(/^(\d)/, '_$1');
         const col  = { name, titles: title, datatype };
-        const meta = columnMeta?.[i];
         if (meta?.levels?.length > 0) {
             const escaped = meta.levels.map(l => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
             col.datatype = { base: 'string', format: `^(${escaped.join('|')})$` };

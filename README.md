@@ -6,7 +6,8 @@ Drop or open a file, choose an output format, and download the result.
 Live on GitHub Pages at [xangregg.github.io/commacomma](https://xangregg.github.io/commacomma/).
 
 ![Initial app view with just an upload area](images/commacomma1.png)
-**Supported input formats:** CSV, TSV, SSV, TXT, DAT, RDS, RData/RDA, SAV
+**Supported input formats:** CSV, TSV, SSV, TXT, DAT, RDS, RData/RDA, SAV, DTA,
+JSON, NDJSON/JSONL, Parquet
 
 **Supported output formats:** CSV, TSV, SSV
 
@@ -49,6 +50,38 @@ The **Value Labels** control has three modes:
 - **Combine** — each value is written as `code + separator + label`
   (e.g. `1:Male`); the separator defaults to `:` and can be changed.
 
+### JSON and NDJSON files (JSON, NDJSON, JSONL)
+
+Several common structures are recognized automatically:
+
+- **Array of objects** — the standard records format; each object becomes a row.
+- **Array of arrays** — the first array is used as the header row.
+- **Single object with array field** — when the object has exactly one array-valued
+  field, that array's elements become rows and any scalar siblings are replicated
+  onto every row (useful for API-envelope responses such as
+  `{"success":true,"data":[…]}`).
+- **Columnar object** — `{"col":[v,v,…], …}` is transposed into rows.
+- **Pandas orient variants** — `split`, `index`, `columns`, and `table` orientations
+  are all detected and converted correctly.
+- **NDJSON / JSONL** — one JSON object per line;
+  also used as a fallback when a `.json` file fails to parse as JSON.
+
+**Nested objects** control (shown for JSON files) chooses how object-valued fields
+are handled:
+
+- **Stringify** — the nested object is serialized as a JSON string (default).
+- **Flatten** — keys are joined with dots: `{"a":{"x":1}}` → column `a.x`.
+- **Leaf** — only the innermost key is used: `{"a":{"x":1}}` → column `x`.
+
+### Parquet files (Parquet)
+
+Column types are read directly from the Parquet schema rather than inferred from
+values. This means a string column whose values happen to look like numbers or
+dates is correctly typed as `string` in the CSVW metadata — important for
+preserving things like leading zeros in ID or credit-card fields.
+
+Timestamps (including the legacy INT96 encoding) are written as ISO 8601 strings.
+
 ### Output and metadata
 
 Output follows [RFC 4180](https://www.rfc-editor.org/rfc/rfc4180) with LF line endings instead of CRLF.
@@ -81,12 +114,21 @@ vendored as `vendor/rds-js.js`.
 The adapter in `rds.js` wraps the library and handles the `.rdata`/`.rda`
 magic-header stripping that the library does not do itself.
 
-#### Updating rds-js
+### Parquet parsing
+
+Parquet support is provided by
+[hyparquet](https://github.com/hyparam/hyparquet) (MIT),
+vendored as `vendor/hyparquet/`.
+The adapter in `parquet.js` wraps the library and maps Parquet schema types
+to CSVW datatypes so that type information from the file is preserved rather
+than re-inferred from values.
+
+### Updating vendored libraries
 
 ```sh
 npm install
 npm run vendor
 ```
 
-Then commit `vendor/rds-js.js`.
+Then commit `vendor/rds-js.js` and `vendor/hyparquet/`.
 `node_modules/` is not committed — it is only needed to run this command.
