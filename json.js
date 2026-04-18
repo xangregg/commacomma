@@ -72,12 +72,19 @@ function parseJson(text, mode) {
     }
 
     if (typeof root === 'object' && root !== null) {
+        // pandas split orient: { columns: [...], data: [[...], ...], index: [...] }
+        if (Array.isArray(root.columns) && Array.isArray(root.data))
+            return [root.columns.map(String), ...root.data.map(r => r.map(stringify))];
+
         const entries = Object.entries(root);
         const arrayEntries  = entries.filter(([, v]) => Array.isArray(v));
-        const scalarEntries = entries.filter(([, v]) => !Array.isArray(v));
-        // API envelope: exactly one array field → use it as rows, broadcast scalars
+        // Only broadcast primitive siblings (not nested objects) to avoid spilling
+        // envelope metadata like pandas' "schema" field onto every row.
+        const primitiveEntries = entries.filter(([, v]) => v === null || typeof v !== 'object');
+
+        // API envelope: exactly one array field → use as rows, broadcast primitive siblings
         if (arrayEntries.length === 1) {
-            const scalars = Object.fromEntries(scalarEntries);
+            const scalars = Object.fromEntries(primitiveEntries);
             const records = arrayEntries[0][1].map(item =>
                 (item !== null && typeof item === 'object' && !Array.isArray(item))
                     ? { ...scalars, ...item }
@@ -85,7 +92,9 @@ function parseJson(text, mode) {
             );
             return recordsToRows(records, mode);
         }
+
         const vals = Object.values(root);
+
         // Columnar format: { col: [v, v, …], col: [v, v, …] }
         if (vals.every(v => Array.isArray(v))) {
             const keys = Object.keys(root);
@@ -95,6 +104,27 @@ function parseJson(text, mode) {
                 rows.push(keys.map((_, j) => stringify(vals[j][i])));
             return rows;
         }
+
+        // pandas index/columns orient: all values are plain objects
+        if (vals.every(v => v !== null && typeof v === 'object' && !Array.isArray(v))) {
+            const keys = Object.keys(root);
+            if (keys.every(k => /^\d+$/.test(k))) {
+                // index orient: outer keys are row indices, inner keys are column names
+                return recordsToRows(vals, mode);
+            } else {
+                // columns orient: outer keys are column names, inner keys are row indices
+                // Transpose: collect all row indices and build one record per index.
+                const rowIndices = [...new Set(vals.flatMap(v => Object.keys(v)))]
+                    .sort((a, b) => {
+                        const na = +a, nb = +b;
+                        return isFinite(na) && isFinite(nb) ? na - nb : a.localeCompare(b);
+                    });
+                return recordsToRows(rowIndices.map(idx =>
+                    Object.fromEntries(keys.map(col => [col, root[col][idx] ?? null]))
+                ), mode);
+            }
+        }
+
         return recordsToRows([root], mode);
     }
 

@@ -54,6 +54,47 @@ describe('bolides5.json', () => {
     });
 });
 
+describe('pandas orient variants', () => {
+    // Expected output for a simple 2-col, 3-row dataframe
+    const header = ['a', 'b'];
+    const data   = [['1', '4'], ['2', '5'], ['3', '6']];
+
+    test('records: array of objects', () => {
+        const [t] = parseJsonFile('[{"a":1,"b":4},{"a":2,"b":5},{"a":3,"b":6}]', 'df.json');
+        assert.deepEqual(t.rows[0], header);
+        assert.deepEqual(t.rows.slice(1), data);
+    });
+
+    test('split: {columns, index, data}', () => {
+        const json = '{"columns":["a","b"],"index":[0,1,2],"data":[[1,4],[2,5],[3,6]]}';
+        const [t] = parseJsonFile(json, 'df.json');
+        assert.deepEqual(t.rows[0], header);
+        assert.deepEqual(t.rows.slice(1), data);
+    });
+
+    test('index: {"0":{col:val}, "1":{col:val}}', () => {
+        const json = '{"0":{"a":1,"b":4},"1":{"a":2,"b":5},"2":{"a":3,"b":6}}';
+        const [t] = parseJsonFile(json, 'df.json');
+        assert.deepEqual(t.rows[0], header);
+        assert.deepEqual(t.rows.slice(1), data);
+    });
+
+    test('columns: {col:{"0":val,"1":val}}', () => {
+        const json = '{"a":{"0":1,"1":2,"2":3},"b":{"0":4,"1":5,"2":6}}';
+        const [t] = parseJsonFile(json, 'df.json');
+        assert.deepEqual(t.rows[0], header);
+        assert.deepEqual(t.rows.slice(1), data);
+    });
+
+    test('table: schema field not broadcast onto rows', () => {
+        const json = '{"schema":{"fields":[{"name":"index"},{"name":"a"},{"name":"b"}],"primaryKey":["index"]},"data":[{"index":0,"a":1,"b":4},{"index":1,"a":2,"b":5},{"index":2,"a":3,"b":6}]}';
+        const [t] = parseJsonFile(json, 'df.json');
+        // schema must not appear as a column
+        assert.ok(!t.rows[0].includes('schema'));
+        assert.equal(t.rows.length - 1, 3);
+    });
+});
+
 describe('nested object handling', () => {
     const nested = '[{"a":{"x":1,"y":2},"b":3}]';
 
