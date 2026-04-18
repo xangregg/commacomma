@@ -476,8 +476,16 @@
 
         <div class="options" id="inputOptions">
             <div class="option-group">
-                <div class="option-label">Input Format</div>
-                <div class="format-buttons" id="inputButtons"></div>
+                <div class="spinner-row">
+                    <label class="spinner-label" style="flex:none">
+                        Input Format
+                        <div class="format-buttons" id="inputButtons"></div>
+                    </label>
+                    <label id="fwfWidthsGroup" class="spinner-label" style="display:none;flex:1">
+                        Column Widths
+                        <input type="text" id="fwfWidths" style="width:100%">
+                    </label>
+                </div>
             </div>
             <div class="option-group">
                 <div class="spinner-row">

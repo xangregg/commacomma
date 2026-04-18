@@ -1,12 +1,18 @@
-// Canonical output formats. TXT and DAT are input-only (sniffed), not listed here.
+// Output formats. Input-only formats (WSV, FWF) are appended separately.
+export const OUTPUT_FORMATS = [
+    { id: 'csv', label: 'CSV',   delimiter: ',',  ext: 'csv', tooltip: 'Comma-separated values' },
+    { id: 'tsv', label: 'TSV',   delimiter: '\t', ext: 'tsv', tooltip: 'Tab-separated values' },
+    { id: 'ssv', label: 'SSV',   delimiter: ';',  ext: 'ssv', tooltip: 'Semicolon-separated values' },
+];
+
 export const FORMATS = [
-    { id: 'csv', label: 'CSV', delimiter: ',',  ext: 'csv' },
-    { id: 'tsv', label: 'TSV', delimiter: '\t', ext: 'tsv' },
-    { id: 'ssv', label: 'SSV', delimiter: ';',  ext: 'ssv' },
+    ...OUTPUT_FORMATS,
+    { id: 'wsv', label: 'WSV',   inputOnly: true, tooltip: 'Whitespace-separated: any run of spaces or tabs is a delimiter' },
+    { id: 'fwf', label: 'Fixed', inputOnly: true, ext: 'fwf', tooltip: 'Fixed-width: column boundaries auto-detected from consistent spacing' },
 ];
 
 // Extensions that map unambiguously to a format. Others fall back to sniffing.
-const EXT_MAP = { csv: 'csv', tsv: 'tsv', tab: 'tsv', ssv: 'ssv' };
+const EXT_MAP = { csv: 'csv', tsv: 'tsv', tab: 'tsv', ssv: 'ssv', fwf: 'fwf' };
 
 export function detectFormatFromExt(filename) {
     const ext = filename.split('.').pop().toLowerCase();

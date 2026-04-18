@@ -59,6 +59,35 @@ export function parseDelimited(text, delimiter) {
     return rows;
 }
 
+function parseWsvLine(line) {
+    const fields = [];
+    let i = 0;
+    const n = line.length;
+    while (i < n) {
+        while (i < n && (line[i] === ' ' || line[i] === '\t')) i++;
+        if (i >= n) break;
+        if (line[i] === '"') {
+            i++;
+            let field = '';
+            while (i < n && line[i] !== '"') field += line[i++];
+            if (i < n) i++; // closing quote
+            fields.push(field);
+        } else {
+            const start = i;
+            while (i < n && line[i] !== ' ' && line[i] !== '\t') i++;
+            fields.push(line.slice(start, i));
+        }
+    }
+    return fields;
+}
+
+export function parseWsv(text) {
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    return text.split('\n')
+        .filter(l => l.trim() !== '')
+        .map(parseWsvLine);
+}
+
 export function serializeDelimited(rows, delimiter) {
     return rows
         .map(row => row.map(f => quoteField(f, delimiter)).join(delimiter))

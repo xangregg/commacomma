@@ -15,7 +15,7 @@ function inferColumnType(values) {
     return 'string';
 }
 
-export function generateCsvw(rows, csvFilename, columnMeta = null) {
+export function generateCsvw(rows, csvFilename, columnMeta = null, notes = null) {
     if (rows.length === 0)
         return null;
     const headers  = rows[0];
@@ -42,9 +42,12 @@ export function generateCsvw(rows, csvFilename, columnMeta = null) {
         if (meta?.valueLabels) col.valueLabels = meta.valueLabels;
         return col;
     });
-    return JSON.stringify({
+    const table = {
         '@context': 'http://www.w3.org/ns/csvw',
         url: csvFilename,
-        tableSchema: { columns },
-    }, null, 2);
+    };
+    if (notes)
+        table.notes = [notes];
+    table.tableSchema = { columns };
+    return JSON.stringify(table, null, 2);
 }

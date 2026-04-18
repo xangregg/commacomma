@@ -1,5 +1,6 @@
-import { FORMATS, detectFormatFromExt, sniffFormat } from './formats.js';
-import { parseDelimited, serializeDelimited } from './parser.js';
+import { FORMATS, OUTPUT_FORMATS, detectFormatFromExt, sniffFormat } from './formats.js';
+import { detectBoundaries, parseFwf, detectFwfPreamble, boundariesToWidths, widthsToBoundaries } from './fwf.js';
+import { parseDelimited, parseWsv, serializeDelimited } from './parser.js';
 import { parseRFile } from './rds.js';
 import { parseSavFile } from './spss.js';
 import { parseDtaFile } from './dta.js';
@@ -17,6 +18,7 @@ let outputFormatId = 'tsv';
 let rTables       = null; // [{name, rows}] extracted from an R file
 let rTableIndex   = 0;
 let jsonSource    = null; // { name, text } when a JSON/NDJSON file is loaded
+let commentText   = null; // text of skipped comment lines, for CSVW notes
 
 function getFormat(id) {
     return FORMATS.find(f => f.id === id);
@@ -28,30 +30,47 @@ function showError(msg) {
     el.style.display = msg ? 'block' : 'none';
 }
 
-function buildButtons(containerId, selectedId, onSelect) {
+function buildButtons(containerId, selectedId, onSelect, formats = FORMATS) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-    for (const fmt of FORMATS) {
+    for (const fmt of formats) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'format-btn' + (fmt.id === selectedId ? ' selected' : '');
         btn.textContent = fmt.label;
+        if (fmt.tooltip) btn.title = fmt.tooltip;
         btn.addEventListener('click', () => onSelect(fmt.id));
         container.appendChild(btn);
     }
 }
 
+function applyFwfDefaults() {
+    const preamble = detectFwfPreamble(currentFile.text);
+    if (preamble) {
+        document.getElementById('commentLines').value = preamble.commentLines;
+        document.getElementById('headerLines').value  = preamble.headerLines;
+    }
+}
+
 function setInputFormat(id) {
     inputFormatId = id;
+    const fwfWidthsGroup = document.getElementById('fwfWidthsGroup');
+    if (id === 'fwf') {
+        fwfWidthsGroup.style.display = '';
+    } else {
+        fwfWidthsGroup.style.display = 'none';
+        document.getElementById('fwfWidths').value = '';
+    }
     buildButtons('inputButtons', id, newId => {
         setInputFormat(newId);
+        if (newId === 'fwf') applyFwfDefaults();
         reparse();
     });
 }
 
 function setOutputFormat(id) {
     outputFormatId = id;
-    buildButtons('outputButtons', id, setOutputFormat);
+    buildButtons('outputButtons', id, setOutputFormat, OUTPUT_FORMATS);
 }
 
 function getSpinValue(id) {
@@ -81,13 +100,35 @@ function reparse() {
     let text = currentFile.text;
     if (commentLines > 0) {
         const lines = text.split('\n');
+        commentText = lines.slice(0, commentLines).join('\n');
         text = lines.slice(commentLines).join('\n');
+    } else {
+        commentText = null;
     }
 
     document.getElementById('combineStr').disabled = headerLines <= 1;
 
     try {
-        parsedRows = parseDelimited(text, getFormat(inputFormatId).delimiter);
+        if (inputFormatId === 'wsv')
+            parsedRows = parseWsv(text);
+        else if (inputFormatId === 'fwf') {
+            const fieldVal = document.getElementById('fwfWidths').value.trim();
+            let boundaries, lineWidth;
+            if (fieldVal) {
+                const widths = fieldVal.split(',').map(s => parseInt(s.trim(), 10)).filter(n => n > 0);
+                if (widths.length > 0) {
+                    boundaries = widthsToBoundaries(widths);
+                    lineWidth = widths.reduce((a, b) => a + b, 0);
+                } else {
+                    boundaries = detectBoundaries(text);
+                }
+            } else {
+                boundaries = detectBoundaries(text);
+                document.getElementById('fwfWidths').value = boundariesToWidths(boundaries, text).join(', ');
+            }
+            parsedRows = parseFwf(text, boundaries, lineWidth);
+        } else
+            parsedRows = parseDelimited(text, getFormat(inputFormatId).delimiter);
         showError('');
         updateFileInfo();
         renderPreview(collapseHeaders(parsedRows, headerLines, combineStr), Math.min(headerLines, 1));
@@ -284,7 +325,8 @@ async function loadTextData(file) {
     currentFile = { name: file.name, text };
 
     setInputFormat(detectedId);
-    setOutputFormat(FORMATS.find(f => f.id !== detectedId).id);
+    setOutputFormat('csv');
+    if (detectedId === 'fwf') applyFwfDefaults();
 
     document.getElementById('inputOptions').style.display = 'block';
 
@@ -415,7 +457,8 @@ function downloadCsvw() {
 
     const csvFilename = baseName + '.' + fmt.ext;
     const meta    = rTables ? getActiveColumnMeta() : null;
-    const content = generateCsvw(rows, csvFilename, meta);
+    const notes   = rTables ? null : commentText;
+    const content = generateCsvw(rows, csvFilename, meta, notes);
     if (!content)
         return;
 
@@ -491,3 +534,4 @@ document.getElementById('jsonNestingButtons').addEventListener('click', e => {
 document.getElementById('commentLines').addEventListener('input', reparse);
 document.getElementById('headerLines').addEventListener('input', reparse);
 document.getElementById('combineStr').addEventListener('input', reparse);
+document.getElementById('fwfWidths').addEventListener('input', reparse);
