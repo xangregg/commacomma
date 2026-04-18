@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseDelimited, serializeDelimited } from './parser.js';
+import { parseDelimited, serializeDelimited } from '../parser.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
 function readData(dataset, ext) {
-    return readFileSync(join(dir, 'testdata', `${dataset}.${ext}`), 'utf8');
+    return readFileSync(join(dir, '..', 'testdata', `${dataset}.${ext}`), 'utf8');
 }
 
 const DELIMITERS = { csv: ',', tsv: '\t', ssv: ';', txt: ',' };

@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRFile } from './rds.js';
-import { serializeDelimited } from './parser.js';
-import { generateCsvw } from './csvw.js';
+import { parseRFile } from '../rds.js';
+import { serializeDelimited } from '../parser.js';
+import { generateCsvw } from '../csvw.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
 function readText(dataset, ext) {
-    return readFileSync(join(dir, 'testdata', `${dataset}.${ext}`), 'utf8');
+    return readFileSync(join(dir, '..', 'testdata', `${dataset}.${ext}`), 'utf8');
 }
 
 function readBinary(dataset, ext) {
-    return readFileSync(join(dir, 'testdata', `${dataset}.${ext}`));
+    return readFileSync(join(dir, '..', 'testdata', `${dataset}.${ext}`));
 }
 
 const DELIMITERS = { csv: ',', tsv: '\t', ssv: ';' };

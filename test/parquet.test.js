@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseParquetFile } from './parquet.js';
-import { serializeDelimited } from './parser.js';
-import { generateCsvw } from './csvw.js';
+import { parseParquetFile } from '../parquet.js';
+import { serializeDelimited } from '../parser.js';
+import { generateCsvw } from '../csvw.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
 function readText(name) {
-    return readFileSync(join(dir, 'testdata', name), 'utf8');
+    return readFileSync(join(dir, '..', 'testdata', name), 'utf8');
 }
 
 function readBuffer(name) {
-    const buf = readFileSync(join(dir, 'testdata', name));
+    const buf = readFileSync(join(dir, '..', 'testdata', name));
     return new Uint8Array(buf).buffer;
 }
 

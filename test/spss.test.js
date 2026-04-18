@@ -3,17 +3,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseSavFile } from './spss.js';
-import { serializeDelimited } from './parser.js';
+import { parseSavFile } from '../spss.js';
+import { serializeDelimited } from '../parser.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
 function readText(name) {
-    return readFileSync(join(dir, 'testdata', name), 'utf8');
+    return readFileSync(join(dir, '..', 'testdata', name), 'utf8');
 }
 
 function readBinary(name) {
-    return readFileSync(join(dir, 'testdata', name));
+    return readFileSync(join(dir, '..', 'testdata', name));
 }
 
 function applyValueLabels(rows, columnMeta, mode, sep) {

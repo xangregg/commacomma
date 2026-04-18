@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseJsonFile } from './json.js';
-import { serializeDelimited } from './parser.js';
+import { parseJsonFile } from '../json.js';
+import { serializeDelimited } from '../parser.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
 function readText(name) {
-    return readFileSync(join(dir, 'testdata', name), 'utf8');
+    return readFileSync(join(dir, '..', 'testdata', name), 'utf8');
 }
 
 describe('simple3name.jsonl', () => {
