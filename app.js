@@ -434,7 +434,9 @@ function convert() {
     const a      = document.createElement('a');
     a.href     = url;
     a.download = downloadName + '.' + fmt.ext;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
 
@@ -467,7 +469,9 @@ function downloadCsvw() {
     const a    = document.createElement('a');
     a.href     = url;
     a.download = csvFilename + '-metadata.json';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
 
