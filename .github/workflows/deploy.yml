@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Write version
-        run: printf 'export const VERSION = %s;\n' "${{ github.run_number }}" > version.js
+        run: sed -i 's|<span id="buildNum"></span>|<span id="buildNum">${{ github.run_number }}</span>|' index.html
 
       - uses: actions/configure-pages@v5
 

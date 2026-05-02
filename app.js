@@ -7,9 +7,6 @@ import { parseDtaFile } from './dta.js';
 import { parseJsonFile } from './json.js';
 import { parseParquetFile } from './parquet.js';
 import { generateCsvw } from './csvw.js';
-import { VERSION } from './version.js';
-
-document.getElementById('buildNum').textContent = VERSION || 'dev';
 
 const MAX_PREVIEW_ROWS = 100;
 const MAX_PREVIEW_COLS = 100;
