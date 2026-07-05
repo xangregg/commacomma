@@ -18,7 +18,7 @@ var BZIP2_MAGIC_0 = 66;
 var BZIP2_MAGIC_1 = 90;
 var XZ_MAGIC_0 = 253;
 var XZ_MAGIC_1 = 55;
-async function decompress(data) {
+async function decompress(data, maxBytes) {
   if (data.length < 2) {
     throw new RdsError("Input too short to be a valid RDS file");
   }
@@ -31,15 +31,16 @@ async function decompress(data) {
     throw new RdsError("Unsupported compression: xz. Only gzip is supported.");
   }
   if (b0 === GZIP_MAGIC_0 && b1 === GZIP_MAGIC_1) {
-    return decompressGzip(data);
+    return decompressGzip(data, maxBytes);
   }
   return data;
 }
-async function decompressGzip(data) {
+async function decompressGzip(data, maxBytes) {
   const ds = new DecompressionStream("gzip");
   const writer = ds.writable.getWriter();
   const reader = ds.readable.getReader();
   const writePromise = writer.write(data).then(() => writer.close());
+  writePromise.catch(() => void 0);
   const chunks = [];
   let totalLength = 0;
   for (; ; ) {
@@ -47,6 +48,10 @@ async function decompressGzip(data) {
     if (done) break;
     chunks.push(value);
     totalLength += value.byteLength;
+    if (maxBytes !== void 0 && totalLength > maxBytes) {
+      await reader.cancel();
+      throw new RdsError(`Decompressed size exceeds the ${maxBytes}-byte limit`);
+    }
   }
   await writePromise;
   const result = new Uint8Array(totalLength);
@@ -107,6 +112,9 @@ var RdsReader = class {
     return String.fromCharCode(byte);
   }
   ensureAvailable(n) {
+    if (n < 0) {
+      throw new RdsError(`Invalid negative read length ${n} at offset ${this.pos}`);
+    }
     if (this.pos + n > this.bytes.byteLength) {
       throw new RdsError(
         `Unexpected end of data: needed ${n} bytes at offset ${this.pos}, but only ${this.remaining} remain`
@@ -202,7 +210,20 @@ function parseStream(data) {
   const refTable = new RefTable();
   return readItem(reader, refTable);
 }
+var MAX_DEPTH = 1e3;
+var currentDepth = 0;
 function readItem(reader, refs) {
+  if (currentDepth >= MAX_DEPTH) {
+    throw new RdsError(`Maximum nesting depth (${MAX_DEPTH}) exceeded`);
+  }
+  currentDepth++;
+  try {
+    return readItemUnguarded(reader, refs);
+  } finally {
+    currentDepth--;
+  }
+}
+function readItemUnguarded(reader, refs) {
   const flags = reader.readInt();
   const sexpType = flags & FLAGS.TYPE_MASK;
   const hasAttributes = (flags & FLAGS.ATTR_BIT) !== 0;
@@ -283,6 +304,9 @@ function readCharsxp(reader, gpFlags) {
   if (length === -1) {
     return null;
   }
+  if (length < 0) {
+    throw new RdsError(`Invalid negative string length: ${length}`);
+  }
   const bytes = reader.readBytes(length);
   if (gpFlags & CHAR_ENCODING.LATIN1) {
     return latin1Decoder.decode(bytes);
@@ -318,12 +342,19 @@ function readAttributes(reader, refs) {
 }
 function readLength(reader) {
   const len = reader.readInt();
-  if (len === -1) {
-    const hi = reader.readInt();
-    const lo = reader.readInt();
-    return hi * 4294967296 + (lo >>> 0);
+  const resolved = len === -1 ? (
+    // Long vector: two ints forming a 64-bit length
+    reader.readInt() * 4294967296 + (reader.readInt() >>> 0)
+  ) : len;
+  if (resolved < 0) {
+    throw new RdsError(`Invalid negative vector length: ${resolved}`);
   }
-  return len;
+  if (resolved > reader.remaining) {
+    throw new RdsError(
+      `Vector length ${resolved} exceeds remaining data (${reader.remaining} bytes)`
+    );
+  }
+  return resolved;
 }
 function readLogicalVector(reader, refs, hasAttributes) {
   const length = readLength(reader);
@@ -535,9 +566,16 @@ function isCompactSeq(state) {
 }
 
 // src/index.ts
-async function parseRds(data) {
-  const decompressed = await decompress(data);
-  return parseStream(decompressed);
+async function parseRds(data, options) {
+  const decompressed = await decompress(data, options?.maxDecompressedBytes);
+  try {
+    return parseStream(decompressed);
+  } catch (err) {
+    if (err instanceof RangeError) {
+      throw new RdsError(`Malformed RDS data: ${err.message}`);
+    }
+    throw err;
+  }
 }
 function isDataFrame(value) {
   if (typeof value !== "object" || value === null) return false;

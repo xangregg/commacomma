@@ -1,8 +1,12 @@
 // rds.js – Adapter around the vendored rds-js library.
 // Supports .rds files (saveRDS) and .rdata/.rda workspace files (save).
 //
-// The library is in vendor/rds-js.js (pre-built ES module, zero dependencies).
-// To update it: npm install && npm run vendor
+// The library is in vendor/rds-js.js (pre-built ES module, zero dependencies),
+// with local patches (factor levels, labels, tzone, value labels for CSVW
+// output) applied on top — see vendor/rds-js.patch.
+// To update it: bump the version in package.json, then npm install && npm run
+// vendor. If upstream changes conflict with vendor/rds-js.patch, the patch
+// step will fail; reconcile it by hand and regenerate the patch file.
 
 import { parseRds, isDataFrame } from './vendor/rds-js.js';
 
